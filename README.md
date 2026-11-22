@@ -1,7 +1,7 @@
 # AI Improvements — Fabric 26.3
 
-> **Experimental / unstable port.** Source parity checks and server-side
-> Minecraft GameTests run in CI. This is not yet a stable release.
+> **Experimental / unstable port.** The active AI editor builds and its
+> server-side Minecraft GameTests pass in CI. It is not yet a stable release.
 
 This branch ports the NeoForge 26.3 implementation to Fabric 26.3. The
 Minecraft version is intentionally unchanged.
@@ -16,7 +16,8 @@ Minecraft version is intentionally unchanged.
 - Cached `FastTrig` math and `FixedLookControl` replacement.
 - Fabric Class Tweaker entries for the vanilla fields/classes exposed by the
   NeoForge Access Transformer.
-- Server GameTests that spawn mobs and inspect their resulting goal selectors.
+- Server GameTests that spawn normal AI-enabled mobs and inspect their
+  resulting goal selectors.
 - Original NeoForge Java sources and metadata retained under
   `src/legacy-neoforge/`.
 
@@ -24,19 +25,29 @@ Minecraft version is intentionally unchanged.
 
 - The NeoForge and Fabric entity-manager callbacks run at the same
   pre-insertion point.
-- Static checks verify goal mappings, defaults, Class Tweaker entries and
-  the built JAR.
-- Server GameTests exercise cow, pufferfish, squid and sheep goal-removal
-  behavior, including isolation of similarly named settings.
+- Static checks compare the goal-rule mappings, configuration defaults,
+  allowlist/denylist behavior, access-widening targets and built JAR.
+- Server GameTests cover:
+  - Cow: FloatGoal removal and the global removal guard.
+  - Chicken: BreedGoal removal.
+  - Pig: TemptGoal removal without removing BreedGoal.
+  - Sheep: EatBlockGoal removal without removing FloatGoal.
+  - Generic look goals: independent player-look/random-look options,
+    allowlist and denylist behavior.
+  - LookControl replacement and entity filtering.
+  - Pufferfish: puff, swimming, avoid-player and panic goals.
+  - Squid: flee and random-movement goals independently.
+- The full GameTest + Class Tweaker + JAR verification workflow has passed
+  using Java 25 and Minecraft 26.3.
 - Two incorrect upstream option connections are corrected for pufferfish puff
   and squid flee; see [behavior parity](docs/BEHAVIOR_PARITY.md).
 - Third-party mob compatibility, natural spawning, disk reloads, high-count
-  performance and client startup still need manual regression checks.
+  performance and normal client startup still need manual regression checks.
 - The JSON configuration is read at startup; there is no GUI or live reload.
 - Goal replacement remains unsupported, matching the upstream TODO.
 
 **Do not use this branch as a stable release.** Incorrect goal-removal settings
-can change mob behavior.
+can change mob behavior. Keep a world backup when trying this build.
 
 ## Requirements
 
