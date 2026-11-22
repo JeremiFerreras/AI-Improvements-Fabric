@@ -118,12 +118,12 @@ disk. The client smoke launches the packaged JAR under Xvfb and checks
 initializer execution, LWJGL/resource initialization, graphics backend
 selection and configuration generation.
 
-An earlier full production integration run
-[45070846309](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45070846309)
-passed client startup, server startup, entity movement, chunk reload and disk
-persistence. The new deterministic post-reload stimulus and expanded rotation
-edge matrix are being re-run in the current CI iteration; that run must finish
-successfully before those additions are treated as passed.
+The complete automated validation, including the deterministic
+post-reload PanicGoal stimulus and expanded rotation edge matrix, passed in CI
+run [45071550721](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45071550721)
+on code commit `0570c77978761c496f528a1856c9509f547ad6e5`. Later branch commits
+through `139a520f1f1527f3eb82a45b2e191d32224637b6` changed only README and
+documentation files, not runtime source or tests.
 
 ## Remaining practical verification
 
