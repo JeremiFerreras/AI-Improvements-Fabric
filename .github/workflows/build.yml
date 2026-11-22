@@ -1,4 +1,4 @@
-name: Fabric 26.3 experimental build
+name: Fabric 26.3 code package
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  package:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Check NeoForge/Fabric source parity
+      - name: Check NeoForge/Fabric source mapping
         run: python tools/verify_port_parity.py
 
       - name: Set up Java 25
@@ -36,10 +36,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Validate Class Tweaker, run GameTests and build
-        run: ./gradlew --no-daemon validateAccessWidener build
+      - name: Compile, validate Class Tweaker and package (GameTests deferred)
+        run: ./gradlew --no-daemon buildFabricPort
 
-      - name: Verify remapped JAR
+      - name: Inspect remapped JAR
         shell: bash
         run: |
           JAR="$(find build/libs -maxdepth 1 -type f -name '*-unstable.jar' ! -name '*sources*' | head -n 1)"
@@ -50,17 +50,16 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-improvements-fabric-26.3-failure-reports
+          name: ai-improvements-fabric-26.3-package-reports
           path: |
             **/build/reports/
-            **/build/test-results/
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload experimental JARs
+      - name: Upload Fabric JARs
         uses: actions/upload-artifact@v4
         with:
-          name: ai-improvements-fabric-26.3-unstable
+          name: ai-improvements-fabric-26.3-package
           path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14

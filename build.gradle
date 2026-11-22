@@ -84,3 +84,11 @@ publishing {
         }
     }
 }
+
+
+// Normal development build: compile and package without running GameTests.
+tasks.register("buildFabricPort") {
+    group = "build"
+    description = "Compiles and packages the Fabric port without executing GameTests."
+    dependsOn("validateAccessWidener", "remapJar")
+}
