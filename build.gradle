@@ -85,10 +85,26 @@ publishing {
     }
 }
 
-
-// Normal development build: compile and package without running GameTests.
+// Normal development build: compile and package without executing GameTests.
 tasks.register("buildFabricPort") {
     group = "build"
     description = "Compiles and packages the Fabric port without executing GameTests."
     dependsOn("validateAccessWidener", "remapJar")
+}
+
+// Run the actual remapped JAR with Fabric's production dedicated-server launcher.
+// This is intentionally separate from Loom's development GameTest server.
+tasks.register("prodServerSmoke", net.fabricmc.loom.task.prod.ServerProductionRunTask) {
+    group = "verification"
+    description = "Launches the remapped mod in a production Fabric dedicated server."
+    installerVersion = "1.0.1"
+    loaderVersion = project.loader_version
+    minecraftVersion = project.minecraft_version
+    mods.from(tasks.named("remapJar").flatMap { it.archiveFile })
+    runDir = layout.buildDirectory.dir("production-server-smoke").get().asFile
+    programArgs.add("--nogui")
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    dependsOn(tasks.named("remapJar"))
 }

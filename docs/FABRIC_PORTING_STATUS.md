@@ -55,8 +55,13 @@ See [BEHAVIOR_PARITY.md](BEHAVIOR_PARITY.md) for the source-level comparison.
 
 The normal package task is `buildFabricPort`. It compiles the active Fabric
 source, validates the Class Tweaker configuration and creates the remapped
-JAR. The workflow performs static source/structure inspection and packaged-JAR
-inspection. It deliberately does not invoke GameTests or launch Minecraft.
+JAR.
+
+The validation workflow additionally runs the Fabric GameTest server and a
+production-launcher smoke test. The latter starts the remapped JAR using
+Fabric's production dedicated-server launcher, summons representative mobs,
+checks startup/config creation, saves the world and shuts down. This is a
+short-lived server smoke test, not a long-running multiplayer or modpack test.
 
 The obsolete Travis configuration targeting Java 7 has been removed.
 GitHub Actions is the active package workflow for this Fabric branch.

@@ -43,6 +43,11 @@ This task compiles the Fabric source, validates the Class Tweaker configuration
 and creates the remapped JAR. It deliberately does **not** run GameTests or
 launch a client/server.
 
+The CI validation workflow also runs the GameTest server and the remapped JAR
+through Fabric's production dedicated-server launcher. The production smoke
+spawns representative mob types, checks generated config, saves the world and
+shuts the server down.
+
 ## Deferred functional checks
 
 The GameTest source suite remains under `src/gametest/`, but execution is

@@ -259,6 +259,23 @@ def check_fabric_metadata() -> None:
             "Dedicated non-test Fabric package task is missing")
     require('dependsOn("validateAccessWidener", "remapJar")' in build,
             "Fabric package task must validate and remap without invoking GameTests")
+    require('tasks.register("prodServerSmoke", net.fabricmc.loom.task.prod.ServerProductionRunTask)' in build,
+            "Production dedicated-server smoke task is missing")
+    require('mods.from(tasks.named("remapJar").flatMap { it.archiveFile })' in build,
+            "Production smoke must run the remapped distribution JAR")
+    smoke = read(ROOT / "tools/run_prod_server_smoke.py")
+    for marker in (
+        "Summoned new Cow",
+        "Summoned new Chicken",
+        "Summoned new Pig",
+        "Summoned new Sheep",
+        "Summoned new Salmon",
+        "Summoned new Squid",
+        "Summoned new Pufferfish",
+        "aiimprovements.json",
+        "level.dat",
+    ):
+        require(marker in smoke, f"Production server smoke coverage missing: {marker}")
 
     workflow = read(ROOT / ".github/workflows/build.yml")
     require("./gradlew --no-daemon validateAccessWidener build" in workflow,

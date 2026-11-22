@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,6 +40,9 @@ jobs:
       - name: Compile, validate Class Tweaker, execute GameTests and package
         run: ./gradlew --no-daemon validateAccessWidener build
 
+      - name: Run remapped JAR in production Fabric dedicated server
+        run: python tools/run_prod_server_smoke.py
+
       - name: Inspect remapped Fabric JAR
         shell: bash
         run: |
@@ -47,7 +50,7 @@ jobs:
           test -n "$JAR"
           python tools/verify_port_parity.py --jar "$JAR"
 
-      - name: Upload failure reports
+      - name: Upload failure reports and production server log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -55,14 +58,19 @@ jobs:
           path: |
             **/build/reports/
             **/build/test-results/
+            build/production-server-smoke.log
+            build/production-server-smoke/config/aiimprovements.json
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload JARs
+      - name: Upload validated JARs and smoke evidence
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ai-improvements-fabric-26.3-validated
-          path: build/libs/*.jar
+          path: |
+            build/libs/*.jar
+            build/production-server-smoke.log
+            build/production-server-smoke/config/aiimprovements.json
           if-no-files-found: error
           retention-days: 14
