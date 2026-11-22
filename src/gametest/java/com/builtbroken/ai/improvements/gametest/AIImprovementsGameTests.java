@@ -352,6 +352,8 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
     private static void verifyLookControllerParity(
             GameTestHelper helper, Mob vanillaMob, Mob fixedMob) {
+        // Cover all yaw quadrants, vertical targets, near-zero horizontal
+        // distances, exact axes and the zero-offset target.
         double[][] targetOffsets = {
                 {0.0, 0.0, 8.0},
                 {4.0, 0.0, 8.0},
@@ -361,7 +363,19 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                 {0.0, 5.0, 8.0},
                 {0.0, -5.0, 8.0},
                 {1.0, 2.0, 12.0},
-                {-1.0, -2.0, 12.0}
+                {-1.0, -2.0, 12.0},
+                {8.0, 0.0, 0.0},
+                {-8.0, 0.0, 0.0},
+                {0.0, 0.0, -8.0},
+                {8.0, 0.0, -8.0},
+                {-8.0, 0.0, -8.0},
+                {0.000001, 0.0, 8.0},
+                {-0.000001, 0.0, 8.0},
+                {0.000001, 8.0, 0.0},
+                {0.000001, -8.0, 0.0},
+                {0.0, 8.0, 0.0},
+                {0.0, -8.0, 0.0},
+                {0.0, 0.0, 0.0}
         };
 
         for (int i = 0; i < targetOffsets.length; i++) {
@@ -384,18 +398,59 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             vanillaMob.getLookControl().tick();
             fixedMob.getLookControl().tick();
-
-            float yawError = wrappedAngleDifference(
-                    vanillaMob.getYHeadRot(), fixedMob.getYHeadRot());
-            float pitchError = Math.abs(vanillaMob.getXRot() - fixedMob.getXRot());
-
-            helper.assertTrue(yawError <= 0.75F,
-                    "FixedLookControl yaw differs from vanilla at target sample " + i
-                            + " by " + yawError + " degrees");
-            helper.assertTrue(pitchError <= 0.75F,
-                    "FixedLookControl pitch differs from vanilla at target sample " + i
-                            + " by " + pitchError + " degrees");
+            assertLookRotationParity(helper, vanillaMob, fixedMob,
+                    "instant target sample " + i);
         }
+
+        // Also compare the inherited smoothing/clamping path over repeated
+        // ticks while the target changes through opposing quadrants.
+        double[][] gradualTargets = {
+                {8.0, 4.0, -8.0},
+                {-8.0, -4.0, -8.0},
+                {0.000001, 12.0, 0.000001},
+                {-0.000001, -12.0, 0.000001},
+                {0.0, 0.0, 8.0}
+        };
+
+        for (int target = 0; target < gradualTargets.length; target++) {
+            double dx = gradualTargets[target][0];
+            double dy = gradualTargets[target][1];
+            double dz = gradualTargets[target][2];
+
+            vanillaMob.getLookControl().setLookAt(
+                    vanillaMob.getX() + dx,
+                    vanillaMob.getY() + vanillaMob.getEyeHeight() + dy,
+                    vanillaMob.getZ() + dz,
+                    7.0F,
+                    5.0F);
+            fixedMob.getLookControl().setLookAt(
+                    fixedMob.getX() + dx,
+                    fixedMob.getY() + fixedMob.getEyeHeight() + dy,
+                    fixedMob.getZ() + dz,
+                    7.0F,
+                    5.0F);
+
+            for (int tick = 0; tick < 40; tick++) {
+                vanillaMob.getLookControl().tick();
+                fixedMob.getLookControl().tick();
+                assertLookRotationParity(helper, vanillaMob, fixedMob,
+                        "gradual target " + target + ", tick " + tick);
+            }
+        }
+    }
+
+    private static void assertLookRotationParity(
+            GameTestHelper helper, Mob vanillaMob, Mob fixedMob, String sample) {
+        float yawError = wrappedAngleDifference(
+                vanillaMob.getYHeadRot(), fixedMob.getYHeadRot());
+        float pitchError = Math.abs(vanillaMob.getXRot() - fixedMob.getXRot());
+
+        helper.assertTrue(yawError <= 0.75F,
+                "FixedLookControl yaw differs from vanilla at " + sample
+                        + " by " + yawError + " degrees");
+        helper.assertTrue(pitchError <= 0.75F,
+                "FixedLookControl pitch differs from vanilla at " + sample
+                        + " by " + pitchError + " degrees");
     }
 
     private static float wrappedAngleDifference(float left, float right) {
