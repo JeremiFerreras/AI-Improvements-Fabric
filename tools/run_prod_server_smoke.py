@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Production-launcher smoke test for the packaged Fabric mod JAR.
 
-The Fabric server launcher performs a first-run install and writes eula.txt.
-This script accepts that bootstrap phase, enables the EULA, launches a real
-server, summons representative mobs, saves and shuts down, then reopens the
-same world to verify the entities can be loaded back from disk.
+The script bootstraps the actual production server, then runs 84 persistent,
+AI-enabled mobs across seven representative entity types inside bounded land
+and water pens. It lets their AI tick, counts each population, saves and stops
+the server, then reopens the same world and verifies all populations survived
+disk loading. This is a bounded CI smoke, not a long-duration benchmark.
 """
 
 from __future__ import annotations
@@ -24,30 +25,72 @@ LOG_FILE = ROOT / "build" / "production-server-smoke.log"
 START_TIMEOUT_SECONDS = 240
 STOP_TIMEOUT_SECONDS = 90
 
+AI_TICK_WINDOW_SECONDS = 20
+EXPECTED_MOBS_PER_TYPE = 12
+
+# Four land-animal pens occupy chunk 0; three aquatic pens occupy chunk 1.
+# Glass walls and roofs keep the test mobs inside the two force-loaded chunks.
 SUMMON_COMMANDS = (
     "forceload add 0 0",
-    # Land mobs stand on a dry stone platform. Aquatic mobs are kept in a
-    # separate pool so NoAI cannot cause land entities to drown or fish to suffocate.
-    "fill -1 79 -1 7 79 1 minecraft:stone",
-    "fill 8 79 -1 14 82 1 minecraft:water",
-    'summon minecraft:cow 0 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_COW"]}',
-    'summon minecraft:chicken 2 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_CHICKEN"]}',
-    'summon minecraft:pig 4 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_PIG"]}',
-    'summon minecraft:sheep 6 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SHEEP"]}',
-    'summon minecraft:salmon 8 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SALMON"]}',
-    'summon minecraft:squid 10 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SQUID"]}',
-    'summon minecraft:pufferfish 12 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_PUFFERFISH"]}',
+    "forceload add 1 0",
+    "fill 0 79 0 15 79 15 minecraft:stone",
+    "fill 0 80 0 0 82 15 minecraft:glass",
+    "fill 15 80 0 15 82 15 minecraft:glass",
+    "fill 1 80 0 14 82 0 minecraft:glass",
+    "fill 1 80 15 14 82 15 minecraft:glass",
+    "fill 1 83 1 14 83 14 minecraft:glass",
+    "fill 16 79 0 31 79 15 minecraft:stone",
+    "fill 16 80 0 16 82 15 minecraft:glass",
+    "fill 31 80 0 31 82 15 minecraft:glass",
+    "fill 17 80 0 30 82 0 minecraft:glass",
+    "fill 17 80 15 30 82 15 minecraft:glass",
+    "fill 17 83 1 30 83 14 minecraft:glass",
+    "fill 17 80 1 30 82 14 minecraft:water",
+    "scoreboard objectives add AIIMP_COUNT dummy",
 )
 
-RELOAD_CHECK_COMMANDS = (
-    ("cow", "execute if entity @e[type=minecraft:cow,tag=AIIMP_PERSIST_COW,limit=1] run say AIIMP_RELOAD_COW"),
-    ("chicken", "execute if entity @e[type=minecraft:chicken,tag=AIIMP_PERSIST_CHICKEN,limit=1] run say AIIMP_RELOAD_CHICKEN"),
-    ("pig", "execute if entity @e[type=minecraft:pig,tag=AIIMP_PERSIST_PIG,limit=1] run say AIIMP_RELOAD_PIG"),
-    ("sheep", "execute if entity @e[type=minecraft:sheep,tag=AIIMP_PERSIST_SHEEP,limit=1] run say AIIMP_RELOAD_SHEEP"),
-    ("salmon", "execute if entity @e[type=minecraft:salmon,tag=AIIMP_PERSIST_SALMON,limit=1] run say AIIMP_RELOAD_SALMON"),
-    ("squid", "execute if entity @e[type=minecraft:squid,tag=AIIMP_PERSIST_SQUID,limit=1] run say AIIMP_RELOAD_SQUID"),
-    ("pufferfish", "execute if entity @e[type=minecraft:pufferfish,tag=AIIMP_PERSIST_PUFFERFISH,limit=1] run say AIIMP_RELOAD_PUFFERFISH"),
+def mob_grid(x_start: int, z_start: int, y: int) -> tuple[tuple[int, int, int], ...]:
+    return tuple(
+        (x_start + column, y, z_start + row)
+        for row in range(3)
+        for column in range(4)
+    )
+
+
+MOB_GROUPS = (
+    ("cow", "minecraft:cow", "AIIMP_PERSIST_COW", mob_grid(1, 1, 80)),
+    ("chicken", "minecraft:chicken", "AIIMP_PERSIST_CHICKEN", mob_grid(5, 1, 80)),
+    ("pig", "minecraft:pig", "AIIMP_PERSIST_PIG", mob_grid(9, 1, 80)),
+    ("sheep", "minecraft:sheep", "AIIMP_PERSIST_SHEEP", mob_grid(1, 5, 80)),
+    ("salmon", "minecraft:salmon", "AIIMP_PERSIST_SALMON", mob_grid(17, 1, 81)),
+    ("squid", "minecraft:squid", "AIIMP_PERSIST_SQUID", mob_grid(21, 1, 81)),
+    ("pufferfish", "minecraft:pufferfish", "AIIMP_PERSIST_PUFFERFISH", mob_grid(25, 1, 81)),
 )
+
+
+def summon_commands() -> tuple[str, ...]:
+    commands = []
+    for _, entity_type, tag, positions in MOB_GROUPS:
+        for x, y, z in positions:
+            commands.append(
+                f'summon {entity_type} {x} {y} {z} '
+                f'{{PersistenceRequired:1b,Tags:["{tag}"]}}'
+            )
+    return tuple(commands)
+
+
+def population_check_commands(prefix: str) -> tuple[str, ...]:
+    commands = []
+    for name, entity_type, tag, _ in MOB_GROUPS:
+        fake_player = f"#{name}"
+        commands.extend((
+            f"scoreboard players set {fake_player} AIIMP_COUNT 0",
+            f"execute as @e[type={entity_type},tag={tag}] "
+            f"run scoreboard players add {fake_player} AIIMP_COUNT 1",
+            f"execute if score {fake_player} AIIMP_COUNT "
+            f"matches {EXPECTED_MOBS_PER_TYPE}.. run say AIIMP_{prefix}_{name.upper()}_COUNT_OK",
+        ))
+    return tuple(commands)
 
 
 def prepare_run_directory() -> None:
@@ -134,6 +177,7 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
     stop_requested = False
     stream_closed = False
     save_deadline: float | None = None
+    ai_tick_deadline: float | None = None
     failure: str | None = None
 
     def send(command_text: str) -> None:
@@ -147,6 +191,15 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if not ready and now - started_at > START_TIMEOUT_SECONDS:
             failure = f"Server did not become ready within {START_TIMEOUT_SECONDS}s"
             break
+        if ai_tick_deadline is not None and now >= ai_tick_deadline and not save_requested:
+            send("say AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE")
+            for count_command in population_check_commands("ACTIVE"):
+                send(count_command)
+            send("save-all flush")
+            save_requested = True
+            save_deadline = time.monotonic() + 20
+            ai_tick_deadline = None
+
         if save_deadline is not None and now > save_deadline and not stop_requested:
             send("stop")
             stop_requested = True
@@ -172,18 +225,22 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if "done (" in lower and not ready:
             ready = True
             if mode == "spawn":
-                for summon in SUMMON_COMMANDS:
-                    send(summon)
-                send("save-all flush")
-                save_requested = True
-                save_deadline = time.monotonic() + 20
+                for command_text in SUMMON_COMMANDS:
+                    send(command_text)
+                for command_text in summon_commands():
+                    send(command_text)
+                send("say AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED")
+                # Keep the actual dedicated server alive while all 84 mobs
+                # execute their normal AI goals inside the force-loaded pens.
+                ai_tick_deadline = time.monotonic() + AI_TICK_WINDOW_SECONDS
             elif mode == "reload":
                 send("forceload add 0 0")
-                # Allow the persistent chunk ticket to materialize its entities
-                # before querying the selectors.
+                send("forceload add 1 0")
+                # Allow the persistent chunk tickets to materialize entities
+                # before re-counting each saved population.
                 time.sleep(4)
-                for _, reload_command in RELOAD_CHECK_COMMANDS:
-                    send(reload_command)
+                for count_command in population_check_commands("RELOAD"):
+                    send(count_command)
                 send("save-all flush")
                 save_requested = True
                 save_deadline = time.monotonic() + 20
@@ -290,10 +347,14 @@ def main() -> int:
         print("FAIL: second production server session did not start, save and stop cleanly", file=sys.stderr)
         return 1
 
-    for entity_name, _ in RELOAD_CHECK_COMMANDS:
-        marker = f"AIIMP_RELOAD_{entity_name.upper()}"
+    for entity_name, _, _, _ in MOB_GROUPS:
+        marker = f"AIIMP_RELOAD_{entity_name.upper()}_COUNT_OK"
         if marker.lower() not in combined_log.lower():
-            print(f"FAIL: {entity_name} was not found after reopening the saved world", file=sys.stderr)
+            print(
+                f"FAIL: fewer than {EXPECTED_MOBS_PER_TYPE} {entity_name} entities "
+                "survived the world reload",
+                file=sys.stderr,
+            )
             return 1
 
     required_markers = (
@@ -305,14 +366,13 @@ def main() -> int:
         "Summoned new Salmon",
         "Summoned new Squid",
         "Summoned new Pufferfish",
+        "AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED",
+        "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
         "Saved the game",
-        "AIIMP_RELOAD_COW",
-        "AIIMP_RELOAD_CHICKEN",
-        "AIIMP_RELOAD_PIG",
-        "AIIMP_RELOAD_SHEEP",
-        "AIIMP_RELOAD_SALMON",
-        "AIIMP_RELOAD_SQUID",
-        "AIIMP_RELOAD_PUFFERFISH",
+    ) + tuple(
+        f"AIIMP_ACTIVE_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
+        f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     )
     for marker in required_markers:
         if marker.lower() not in combined_log.lower():
@@ -358,11 +418,12 @@ def main() -> int:
 
     print("PASS: production Fabric dedicated-server bootstrap and EULA setup")
     print("PASS: production server loaded AI Improvements and Fabric API")
-    print("PASS: seven representative mob entity types were summoned")
+    print(f"PASS: {len(MOB_GROUPS) * EXPECTED_MOBS_PER_TYPE} AI-enabled mobs were spawned")
+    print(f"PASS: all seven entity populations survived {AI_TICK_WINDOW_SECONDS}s of normal AI ticking")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
     print("PASS: second production server startup reopened the saved world")
-    print("PASS: all seven entity types were found after disk reload")
+    print(f"PASS: all seven populations of {EXPECTED_MOBS_PER_TYPE} entities were found after disk reload")
     return 0
 
 
