@@ -309,7 +309,7 @@ def check_fabric_metadata() -> None:
         "post_reload_stimulus_commands",
         "movement_check_commands",
         "AIIMP_POST_CHUNK_RELOAD_PANIC_STIMULUS_APPLIED",
-        "data merge entity @s {Fire:100s,Invulnerable:1b}",
+        "data merge entity @s {Fire:1200s,Invulnerable:1b}",
         "AIIMP_{prefix}_{name.upper()}_COUNT_OK",
         "AIIMP_{prefix}_{name.upper()}_MOVEMENT_OK",
         "AIIMP_ACTIVE_{name.upper()}_MOVEMENT_OK",
