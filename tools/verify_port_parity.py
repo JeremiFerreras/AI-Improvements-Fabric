@@ -257,11 +257,11 @@ def check_fabric_metadata() -> None:
             "Loom does not point to the Class Tweaker resource")
     require('tasks.register("buildFabricPort")' in build,
             "Dedicated non-test Fabric package task is missing")
-    require('dependsOn("validateAccessWidener", "remapJar")' in build,
+    require('dependsOn("validateAccessWidener", "build")' in build,
             "Fabric package task must validate and remap without invoking GameTests")
     require('tasks.register("prodServerSmoke", net.fabricmc.loom.task.prod.ServerProductionRunTask)' in build,
             "Production dedicated-server smoke task is missing")
-    require('mods.from(tasks.named("remapJar").flatMap { it.archiveFile })' in build,
+    require('mods.from(tasks.named("jar").flatMap { it.archiveFile })' in build,
             "Production smoke must run the remapped distribution JAR")
     smoke = read(ROOT / "tools/run_prod_server_smoke.py")
     for marker in (

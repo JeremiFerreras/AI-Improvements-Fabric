@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Production-launcher smoke test for the remapped Fabric mod JAR.
+"""Production-launcher smoke test for the packaged Fabric mod JAR.
 
 Starts a real Fabric dedicated-server distribution, waits for the world to be
 ready, summons representative mobs through the server console, flushes world
@@ -238,7 +238,7 @@ def main() -> int:
         return 1
 
     print("PASS: production Fabric dedicated-server startup")
-    print("PASS: AI Improvements initialized with the remapped release JAR")
+    print("PASS: AI Improvements initialized with the distribution JAR")
     print("PASS: seven representative mob entity types were summoned")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")

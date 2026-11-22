@@ -40,7 +40,7 @@ Linux/macOS:
 ```
 
 This task compiles the Fabric source, validates the Class Tweaker configuration
-and creates the remapped JAR. It deliberately does **not** run GameTests or
+and creates the packaged JAR. It deliberately does **not** run GameTests or
 launch a client/server.
 
 The CI validation workflow also runs the GameTest server and the remapped JAR

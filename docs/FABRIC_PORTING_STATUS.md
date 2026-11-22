@@ -58,7 +58,7 @@ source, validates the Class Tweaker configuration and creates the remapped
 JAR.
 
 The validation workflow additionally runs the Fabric GameTest server and a
-production-launcher smoke test. The latter starts the remapped JAR using
+production-launcher smoke test. The latter starts the packaged distribution JAR using
 Fabric's production dedicated-server launcher, summons representative mobs,
 checks startup/config creation, saves the world and shuts down. This is a
 short-lived server smoke test, not a long-running multiplayer or modpack test.

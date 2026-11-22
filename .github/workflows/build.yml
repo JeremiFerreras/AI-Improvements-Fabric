@@ -40,10 +40,10 @@ jobs:
       - name: Compile, validate Class Tweaker, execute GameTests and package
         run: ./gradlew --no-daemon validateAccessWidener build
 
-      - name: Run remapped JAR in production Fabric dedicated server
+      - name: Run distribution JAR in production Fabric dedicated server
         run: python tools/run_prod_server_smoke.py
 
-      - name: Inspect remapped Fabric JAR
+      - name: Inspect packaged Fabric JAR
         shell: bash
         run: |
           JAR="$(find build/libs -maxdepth 1 -type f -name '*-unstable.jar' ! -name '*sources*' | head -n 1)"
