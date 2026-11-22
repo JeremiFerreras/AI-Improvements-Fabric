@@ -142,7 +142,7 @@ def check_source_parity() -> None:
             "Goal removals must remain deferred until after selector iteration")
 
     game_test = read(ROOT / "src/gametest/java/com/builtbroken/ai/improvements/gametest/AIImprovementsGameTests.java")
-    for marker in ("recordVanillaMobGoalBaselines", "spawnWithNoFreeWill", "logGoals("):
+    for marker in ("recordVanillaMobGoalBaselines", "helper.spawn(", "logGoals("):
         require(marker in game_test, f"GameTest is missing baseline inventory feature: {marker}")
     game_test_metadata = json.loads(read(ROOT / "src/gametest/resources/fabric.mod.json"))
     require(
