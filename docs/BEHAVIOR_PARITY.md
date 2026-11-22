@@ -93,6 +93,11 @@ constant, wanted-position state, cooldown and rotation-speed state. It still
 replaces only the exact vanilla `LookControl` class; modded subclasses are
 left untouched to avoid overriding another mod's controller.
 
+The Fabric port also avoids copying old state when the previous vanilla
+`LookControl` reference is null. The preserved NeoForge method dereferences
+that value unconditionally despite explicitly allowing a null controller in
+its replacement condition.
+
 ## Configuration
 
 The Fabric port stores the same option set and defaults in
@@ -106,10 +111,31 @@ The JSON format is different, but the option defaults and runtime decisions
 are intended to match. The config is read on startup; there is no live reload
 or in-game config screen yet.
 
+## Runtime regression coverage
+
+The Minecraft 26.3 Fabric GameTest server has passed these behavior checks
+with normal AI-enabled entities:
+
+- Cow: removing FloatGoal leaves BreedGoal intact; the global removal guard
+  prevents the removal.
+- Chicken and pig: their own configured BreedGoal/TemptGoal removals apply
+  to the correct species.
+- Generic look goals: player-look and random-look removal are independent;
+  allowlist/denylist behavior is checked.
+- LookControl: replacement and entity filtering are checked.
+- Pufferfish: puff, swimming, avoid-player and panic options are isolated.
+- Squid: flee and random movement options are isolated.
+- Sheep: EatBlockGoal removal leaves FloatGoal intact.
+
+The test checks the goal selector immediately after the entity enters the
+server, before its first AI tick. This is a focused regression test of the
+port's event/goal-edit path, not proof of long-term behavior or every
+third-party goal implementation.
+
 ## Verification limits
 
-The CI parity check verifies the source mapping, active-source isolation,
-Class Tweaker entries, default settings and the compiled JAR contents.
-It does **not** prove that every vanilla or third-party mob behaves identically
-at runtime. A real client and dedicated-server test is still required for
-spawning, disk reloads, mod-added goals and high-entity-count performance.
+CI validates the source mapping, Class Tweaker entries, configuration
+coverage, GameTests and JAR contents. It does **not** prove that every vanilla
+or third-party mob behaves identically over time. Natural spawn sources,
+disk reloads, mod-added goals, live look rotation and high-entity-count
+performance still require manual client/server comparison against NeoForge.
