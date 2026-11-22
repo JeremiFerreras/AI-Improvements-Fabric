@@ -61,9 +61,10 @@ The validation workflow additionally runs the Fabric GameTest server and a
 production-launcher smoke test. The latter starts the packaged distribution JAR
 with Fabric API on the production mod classpath, creates the EULA/config files,
 summons seven representative mob types, saves and closes the world, then opens
-the same world again and checks that all seven entity types load from disk.
-This is a short-lived single-player dedicated-server smoke test, not a
-long-running multiplayer or modpack test.
+the same world again and checks that all seven entity types load from disk. The
+production task is explicitly forced to execute for every phase so Gradle
+cannot skip the reload as UP-TO-DATE. This is a short-lived single-player
+dedicated-server smoke test, not a long-running multiplayer or modpack test.
 
 The obsolete Travis configuration targeting Java 7 has been removed.
 GitHub Actions is the active package workflow for this Fabric branch.

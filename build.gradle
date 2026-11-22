@@ -108,5 +108,7 @@ tasks.register("prodServerSmoke", net.fabricmc.loom.task.prod.ServerProductionRu
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
+    // Each smoke phase must relaunch the production server against the same world.
+    outputs.upToDateWhen { false }
     dependsOn(tasks.named("jar"))
 }

@@ -265,6 +265,8 @@ def check_fabric_metadata() -> None:
             "Production smoke must run the remapped distribution JAR")
     require('productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"' in build,
             "Production smoke launcher must include the declared Fabric API mod dependency")
+    require("outputs.upToDateWhen { false }" in build,
+            "Production smoke phases must relaunch the server instead of being skipped as UP-TO-DATE")
     smoke = read(ROOT / "tools/run_prod_server_smoke.py")
     for marker in (
         "Summoned new Cow",
