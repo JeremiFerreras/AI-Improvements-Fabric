@@ -1,7 +1,7 @@
 # Fabric 26.3 port — implementation and validation status
 
-**Current phase:** implementation is complete for the original runtime feature
-set; automated functional validation is active. This is still an unstable
+**Current phase:** the original runtime feature set is implemented and the
+bounded automated CI validation has passed. This is still an unstable
 development build, not a release or a claim of full modpack stability.
 
 ## Base and target
@@ -33,7 +33,7 @@ Known upstream wiring defects are corrected: pufferfish puff uses
 mutation is deferred until after traversal. Adaptive ordering only changes
 predicate evaluation order and normalizes counters safely.
 
-## Validation now running in CI
+## Automated CI validation coverage
 
 The workflow on this branch performs:
 
