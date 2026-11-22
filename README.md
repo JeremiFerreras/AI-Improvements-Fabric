@@ -46,11 +46,13 @@ launch a client/server.
 The CI validation workflow runs the GameTest server, the remapped JAR through
 Fabric's production dedicated-server launcher, and the packaged client under
 Xvfb. The dedicated-server smoke keeps 84 mobs across seven species active for
-60 seconds, verifies that every species changes position, unloads/reloads their
-chunks, checks movement again for 30 seconds, saves the world, restarts the
-server and verifies disk-loaded populations. GameTests cover each exposed
-goal option and compare the optimized look controller against vanilla at
-edge-angle and gradual-turn samples.
+60 seconds and verifies natural movement. After chunk unload/reload, the four
+farm-animal groups receive a temporary invulnerable on-fire stimulus to trigger
+vanilla PanicGoal deterministically; fish and squid continue using their normal
+swimming/movement goals. The server then saves, restarts and verifies the
+populations loaded from disk. GameTests cover each exposed goal option and
+compare the optimized look controller with vanilla across 29 target geometries
+and five gradual turns, with a 0.75-degree yaw/pitch tolerance.
 
 The client smoke confirms packaged-mod initialization, LWJGL/resource
 initialization, graphics backend selection and config generation. It does not
