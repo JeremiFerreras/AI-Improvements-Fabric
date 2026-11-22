@@ -1,4 +1,4 @@
-name: Fabric 26.3 code package
+name: Fabric 26.3 validation
 
 on:
   push:
@@ -13,8 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  package:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +25,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Check NeoForge/Fabric source mapping
+      - name: Static source and structure audit
         run: python tools/verify_port_parity.py
 
       - name: Set up Java 25
@@ -36,30 +37,32 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Compile, validate Class Tweaker and package (GameTests deferred)
-        run: ./gradlew --no-daemon buildFabricPort
+      - name: Compile, validate Class Tweaker, execute GameTests and package
+        run: ./gradlew --no-daemon validateAccessWidener build
 
-      - name: Inspect remapped JAR
+      - name: Inspect remapped Fabric JAR
         shell: bash
         run: |
           JAR="$(find build/libs -maxdepth 1 -type f -name '*-unstable.jar' ! -name '*sources*' | head -n 1)"
           test -n "$JAR"
           python tools/verify_port_parity.py --jar "$JAR"
 
-      - name: Store reports
+      - name: Upload failure reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-improvements-fabric-26.3-package-reports
+          name: ai-improvements-fabric-26.3-validation-reports
           path: |
             **/build/reports/
+            **/build/test-results/
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload Fabric JARs
+      - name: Upload JARs
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-improvements-fabric-26.3-package
+          name: ai-improvements-fabric-26.3-validated
           path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
