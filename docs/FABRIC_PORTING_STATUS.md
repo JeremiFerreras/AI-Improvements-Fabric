@@ -46,13 +46,14 @@ The workflow on this branch performs:
    over 40 gradual ticks each, with a 0.75-degree yaw/pitch tolerance.
 4. Production dedicated-server launch using the packaged remapped JAR and
    Fabric API, not just the development classpath.
-5. A persistent-mob scenario with seven species in separate land/water pens.
-   The script counts each group and checks horizontal movement during a
-   60-second natural AI window. It removes force-load tickets, verifies that
-   all seven chunks unload, reloads them, then applies a temporary invulnerable
-   on-fire stimulus to the four farm-animal groups to activate vanilla
-   PanicGoal deterministically. Fish and squid retain their normal swimming /
-   movement behavior. Movement is checked again for each species.
+5. A persistent-mob scenario with seven species in separate land/water pens
+   (84 AI-enabled mobs total). The script checks horizontal movement during a
+   60-second natural AI window, unloads all seven chunks, then reloads them.
+   The four farm-animal groups receive a small `minecraft:in_fire` damage event
+   (a vanilla `#panic_causes` member), followed by invulnerability and a
+   sustained fire state, to activate their normal `PanicGoal` deterministically.
+   Fish and squid continue with their usual swimming/movement goals. The script
+   verifies that every species moves again after reload.
 6. World save, clean server shutdown, second server startup and disk-load
    population checks.
 7. Production client launch using the packaged JAR under Xvfb, checking mod
@@ -60,13 +61,13 @@ The workflow on this branch performs:
    generated configuration.
 8. Final inspection of the remapped distribution JAR and uploaded smoke logs.
 
-The complete automated validation, including the deterministic
-post-reload PanicGoal stimulus, passed in CI run
-[45071550721](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45071550721)
-on code commit `0570c77978761c496f528a1856c9509f547ad6e5`. The later branch
-commits through `139a520f1f1527f3eb82a45b2e191d32224637b6` change only README
-and documentation files; no runtime source or test code changed after the
-successful run.
+The complete automated validation passed in CI run
+[45072561414](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45072561414)
+on commit `10b9ea59e1cc651eefa0b189a2f475e3f64d8605`. This run includes the
+expanded LookControl state/compatibility cases, 29 geometry samples plus five
+40-tick gradual turns, all goal-option GameTests, 84-mob production-server
+movement checks before and after chunk reload, disk save/reload, and packaged
+client startup. All workflow steps completed successfully.
 
 ## Limits not established by CI
 
