@@ -64,16 +64,13 @@ public final class FilterLayer extends FilterNode {
     }
 
     private void resortAndNormalize() {
-        if (size < 2) {
-            return;
+        if (size > 1) {
+            // Frequently matching nodes are evaluated first.
+            Arrays.sort(nodes, 0, size,
+                    Comparator.comparingInt((FilterNode node) -> node.callCount).reversed());
         }
 
-        // Frequently matching nodes are evaluated first.
-        Arrays.sort(nodes, 0, size,
-                Comparator.comparingInt((FilterNode node) -> node.callCount).reversed());
-
-        // Preserve relative frequency. floor(count / sum) would collapse
-        // almost every positive counter to zero.
+        // Also normalize a single node; otherwise its counter could overflow.
         for (int i = 0; i < size; i++) {
             nodes[i].callCount >>>= 1;
         }

@@ -1,8 +1,8 @@
 # Fabric 26.3 port — implementation status
 
-**Current phase:** finish the code and project structure. Functional testing is
-deferred until the maintainer explicitly asks for it. This document does not
-declare the port released or practically stable.
+**Current phase:** complete the code and repository structure by static review.
+Functional testing is deferred until the maintainer explicitly asks for it.
+This document does not declare the port released or practically stable.
 
 ## Base and target
 
@@ -16,41 +16,50 @@ declare the port released or practically stable.
 - Loom: `1.19-SNAPSHOT`
 - Mod version metadata: `0.5.0-fabric-unstable`
 
-## Source and structure review
+## Code and structure inventory
 
-The original Java implementation inventory is represented in the active Fabric
-source tree. The original NeoForge sources are preserved separately under
-`src/legacy-neoforge/`; they are not part of the active Fabric source set.
+The 18 original runtime Java source files are represented by active Fabric
+counterparts. The Fabric initializer and lifecycle adapter replace the
+NeoForge mod entrypoint/event subscriber. The original NeoForge source,
+metadata and access transformer remain isolated under
+`src/legacy-neoforge/`, outside the active Fabric source set.
 
-The active implementation includes:
+The active implementation contains:
 
 - Fabric initializer and server entity lifecycle registration.
-- The original configuration categories and options, represented in the
-  Fabric JSON configuration.
+- The original configuration categories and options, represented in JSON.
 - Generic mob, fish, pufferfish, squid, cow, chicken, pig and sheep modifiers.
-- The modifier/filter nodes and their dispatch pipeline.
+- The modifier/filter nodes and dispatch pipeline.
 - `FastTrig` and the `FixedLookControl` replacement.
 - Fabric metadata and Class Tweaker configuration.
-- A preserved GameTest source set for later functional verification.
+- A preserved GameTest source set under `src/gametest/`, not invoked by the
+  normal package task.
 
-The port retains the original goal predicates and entity filters. The two
-upstream miswired options for pufferfish puff and squid flee are connected to
-their intended settings in the Fabric implementation. Adaptive ordering and
-goal-removal iteration were also revised in the Fabric implementation; see
-[BEHAVIOR_PARITY.md](BEHAVIOR_PARITY.md).
+The old standalone performance benchmark used pre-26.3 Minecraft classes and
+referenced a controller that is not part of this port. It has been moved to
+`archive/legacy-tools/` for historical reference and is not compiled.
 
-## Current build workflow
+## Implementation corrections
 
-The normal build task is `buildFabricPort`. It performs source compilation,
-Class Tweaker validation and JAR remapping/packaging. CI also performs static
-source-mapping and packaged-JAR inspection.
+- Pufferfish puff now uses `removeFishPuff`, rather than the miswired
+  `removeFishFollowLeader` reference in the original.
+- Squid flee now uses `removeSquidFlee`, rather than the miswired
+  `removeRandomMove` reference in the original.
+- Goal removal remains deferred until after selector iteration.
+- Adaptive modifier ordering is explicit and counter normalization also
+  handles a single-node layer.
 
-The normal build workflow intentionally does **not** execute GameTests, launch
-Minecraft or perform runtime behavior checks. The GameTest sources remain
-available under `src/gametest/` for the later test phase.
+See [BEHAVIOR_PARITY.md](BEHAVIOR_PARITY.md) for the source-level comparison.
 
-The obsolete Travis configuration targeting Java 7 has been removed. GitHub
-Actions is the active package workflow for this Fabric branch.
+## Current package workflow
+
+The normal package task is `buildFabricPort`. It compiles the active Fabric
+source, validates the Class Tweaker configuration and creates the remapped
+JAR. The workflow performs static source/structure inspection and packaged-JAR
+inspection. It deliberately does not invoke GameTests or launch Minecraft.
+
+The obsolete Travis configuration targeting Java 7 has been removed.
+GitHub Actions is the active package workflow for this Fabric branch.
 
 ## Functional checks deferred by request
 
@@ -65,5 +74,5 @@ Do not run these checks until the maintainer explicitly requests them:
 - Performance under high entity counts.
 - Normal client startup and a long-running dedicated-server session.
 
-Until those checks are requested and performed, code review and successful
-packaging must not be presented as proof of practical stability.
+Static source review and package creation must not be presented as proof of
+practical stability.

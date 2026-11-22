@@ -95,16 +95,14 @@ public final class ModifierLayer {
      * Rebuilds the order when counters approach overflow.
      *
      * <p>Higher hit counts must be first because processing starts at index 0.
-     * Halving preserves relative frequency; dividing by the sum rounded down
-     * would turn nearly every counter into zero and erase the learned order.
+     * Halving preserves relative frequency. Counters are normalized even when
+     * this layer contains a single modifier, so the counter cannot overflow.
      */
     protected void resort(boolean normalize) {
-        if (size < 2) {
-            return;
+        if (size > 1) {
+            Arrays.sort(nodes, 0, size,
+                    Comparator.comparingInt((ModifierNode node) -> node.callCount).reversed());
         }
-
-        Arrays.sort(nodes, 0, size,
-                Comparator.comparingInt((ModifierNode node) -> node.callCount).reversed());
 
         if (normalize) {
             for (int i = 0; i < size; i++) {
