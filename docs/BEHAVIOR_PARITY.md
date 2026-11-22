@@ -108,22 +108,23 @@ turns. The acceptance tolerance remains 0.75 degrees for yaw and pitch.
 
 The production-server smoke runs the packaged JAR with 12 AI-enabled mobs per
 species (84 total) across cows, chickens, pigs, sheep, salmon, squid and
-pufferfish. It checks horizontal coordinate changes for every species during
-a 60-second natural AI window. After an in-session chunk unload/reload, it
-applies a temporary invulnerable on-fire stimulus to the four farm-animal
-groups to activate vanilla PanicGoal deterministically; fish and squid retain
-their normal swim/movement goals. It checks movement again, saves the world,
-restarts the dedicated server and verifies all seven populations load from
-disk. The client smoke launches the packaged JAR under Xvfb and checks
-initializer execution, LWJGL/resource initialization, graphics backend
-selection and configuration generation.
+pufferfish. It verifies horizontal movement for every species during a
+60-second natural AI window. After chunk unload/reload, the four farm-animal
+groups receive a small `minecraft:in_fire` hit, followed by an invulnerable
+state and sustained fire. In 26.3, `minecraft:in_fire` is included in
+`#minecraft:panic_environmental_causes`, which is nested in
+`#minecraft:panic_causes`; this activates the normal `PanicGoal` predicate.
+Fish and squid retain their usual swim/movement goals. Movement is checked
+again for all seven groups, followed by world save, dedicated-server restart
+and verification of all populations after disk loading. The client smoke
+launches the packaged JAR under Xvfb; it initializes LWJGL/resources and selects
+Vulkan with Mesa llvmpipe in the virtual display.
 
-The complete automated validation, including the deterministic
-post-reload PanicGoal stimulus and expanded rotation edge matrix, passed in CI
-run [45071550721](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45071550721)
-on code commit `0570c77978761c496f528a1856c9509f547ad6e5`. Later branch commits
-through `139a520f1f1527f3eb82a45b2e191d32224637b6` changed only README and
-documentation files, not runtime source or tests.
+The full validation passed on commit
+`10b9ea59e1cc651eefa0b189a2f475e3f64d8605` in CI run
+[45072561414](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45072561414).
+It includes the panic-causing damage stimulus, all seven post-reload movement
+markers, disk persistence, the expanded LookControl cases and client startup.
 
 ## Remaining practical verification
 
