@@ -257,6 +257,14 @@ def check_fabric_metadata() -> None:
     require('dependsOn("validateAccessWidener", "remapJar")' in build,
             "Fabric package task must validate and remap without invoking GameTests")
 
+    workflow = read(ROOT / ".github/workflows/build.yml")
+    require("./gradlew --no-daemon buildFabricPort" in workflow,
+            "GitHub Actions must use the dedicated package task")
+    require("runGameTest" not in workflow,
+            "Current package workflow must not invoke GameTests")
+    require(not (ROOT / "src/tools").exists(),
+            "Pre-26.3 utility code must remain outside the active src tree")
+
 
 def check_source_parity() -> None:
     check_source_inventory()
