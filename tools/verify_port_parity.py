@@ -276,6 +276,16 @@ def check_fabric_metadata() -> None:
         "Summoned new Pufferfish",
         "aiimprovements.json",
         "level.dat",
+        "RELOAD_CHECK_COMMANDS",
+        "AIIMP_RELOAD_COW",
+        "AIIMP_RELOAD_CHICKEN",
+        "AIIMP_RELOAD_PIG",
+        "AIIMP_RELOAD_SHEEP",
+        "AIIMP_RELOAD_SALMON",
+        "AIIMP_RELOAD_SQUID",
+        "AIIMP_RELOAD_PUFFERFISH",
+        "mode=\"reload\"",
+        "PersistenceRequired:1b",
     ):
         require(marker in smoke, f"Production server smoke coverage missing: {marker}")
 

@@ -58,10 +58,12 @@ source, validates the Class Tweaker configuration and creates the remapped
 JAR.
 
 The validation workflow additionally runs the Fabric GameTest server and a
-production-launcher smoke test. The latter starts the packaged distribution JAR using
-Fabric's production dedicated-server launcher, summons representative mobs,
-checks startup/config creation, saves the world and shuts down. This is a
-short-lived server smoke test, not a long-running multiplayer or modpack test.
+production-launcher smoke test. The latter starts the packaged distribution JAR
+with Fabric API on the production mod classpath, creates the EULA/config files,
+summons seven representative mob types, saves and closes the world, then opens
+the same world again and checks that all seven entity types load from disk.
+This is a short-lived single-player dedicated-server smoke test, not a
+long-running multiplayer or modpack test.
 
 The obsolete Travis configuration targeting Java 7 has been removed.
 GitHub Actions is the active package workflow for this Fabric branch.
@@ -72,7 +74,7 @@ Do not run these checks until the maintainer explicitly requests them:
 
 - GameTests and live goal-selector behavior.
 - Natural spawning, spawn eggs and command spawning in normal worlds.
-- Chunk unload/reload and disk-loaded entity behavior.
+- Long-term chunk unload/reload cycles beyond the one smoke-test save/reopen.
 - Compatibility with third-party mods that add, wrap or replace mob goals.
 - Look rotation equivalence at edge angles, head limits and rapid target
   changes.

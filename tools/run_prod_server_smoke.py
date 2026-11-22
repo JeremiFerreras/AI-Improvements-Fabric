@@ -49,10 +49,17 @@ RELOAD_CHECK_COMMANDS = (
 
 def prepare_run_directory() -> None:
     RUN_DIR.mkdir(parents=True, exist_ok=True)
+    # Pre-seed configuration files so the launcher's bootstrap does not report
+    # missing-file errors; the first server run will enforce the EULA gate.
+    eula = RUN_DIR / "eula.txt"
+    if not eula.exists():
+        eula.write_text("eula=false\n", encoding="utf-8")
+    properties = RUN_DIR / "server.properties"
+    if not properties.exists():
+        write_server_properties()
 
 
-def write_server_files(eula_path: Path) -> None:
-    eula_path.write_text("eula=true\n", encoding="utf-8")
+def write_server_properties() -> None:
     properties = {
         "motd": "AI Improvements Fabric production smoke",
         "server-ip": "127.0.0.1",
@@ -73,6 +80,11 @@ def write_server_files(eula_path: Path) -> None:
         "".join(f"{key}={value}\n" for key, value in properties.items()),
         encoding="utf-8",
     )
+
+
+def write_server_files(eula_path: Path) -> None:
+    eula_path.write_text("eula=true\n", encoding="utf-8")
+    write_server_properties()
 
 
 def pump_lines(stream, output_queue: queue.Queue[str | None]) -> None:

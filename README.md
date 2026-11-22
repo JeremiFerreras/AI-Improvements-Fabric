@@ -50,11 +50,11 @@ shuts the server down.
 
 ## Deferred functional checks
 
-The GameTest source suite remains under `src/gametest/`, but execution is
-paused until the maintainer explicitly requests testing. Natural spawning,
-spawn eggs, disk-loaded entities, third-party AI compatibility, look rotation,
-high-mob-count performance, normal client startup and long-running server
-behavior remain unverified in practice.
+The GameTest source suite remains under `src/gametest/` and runs in CI.
+Natural spawning, spawn eggs, third-party AI compatibility, long-duration
+server behavior, high-mob-count performance and normal client startup remain
+unverified in practice. The production smoke only covers a fresh server and
+one save/reopen cycle with representative command-spawned mobs.
 
 The JSON configuration is read at startup; there is no GUI or live reload.
 Goal replacement remains unsupported, matching the upstream TODO.
