@@ -134,6 +134,9 @@ def write_server_properties() -> None:
         "server-port": "25575",
         "online-mode": "false",
         "max-players": "1",
+        # CI has no player client connected. Disable Minecraft's default
+        # 60-second empty-server pause so the AI stress window keeps ticking.
+        "pause-when-empty-seconds": "0",
         "spawn-protection": "0",
         "view-distance": "4",
         "simulation-distance": "4",
@@ -435,6 +438,7 @@ def main() -> int:
             return 1
 
     bad_markers = (
+        "Server empty for 60 seconds, pausing",
         "NoSuchFieldError",
         "NoSuchMethodError",
         "Mixin apply failed",
