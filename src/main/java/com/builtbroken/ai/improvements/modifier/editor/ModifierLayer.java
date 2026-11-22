@@ -64,8 +64,13 @@ public final class ModifierLayer {
             Goal result = modifier.handle(entity, goal);
 
             if (result != goal) {
-                if (ConfigMain.CONFIG.enableCallBubbling.get() && i != 0
-                        && modifier.callCount > nodes[i - 1].callCount) {
+                // Count every successful edit before comparing frequencies. The old
+                // order compared two permanently-zero counters, so bubbling never ran.
+                modifier.callCount++;
+                if (modifier.callCount >= Integer.MAX_VALUE / 2) {
+                    resortNormalize = true;
+                } else if (ConfigMain.CONFIG.enableCallBubbling.get()
+                        && i != 0 && modifier.callCount > nodes[i - 1].callCount) {
                     bubble(modifier, i);
                 }
                 return result;
@@ -93,11 +98,6 @@ public final class ModifierLayer {
     }
 
     protected void bubble(ModifierNode modifier, int index) {
-        modifier.callCount++;
-        if (modifier.callCount >= Integer.MAX_VALUE / 2) {
-            resortNormalize = true;
-            return;
-        }
         nodes[index] = nodes[index - 1];
         nodes[index - 1] = modifier;
     }
