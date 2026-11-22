@@ -149,6 +149,8 @@ def check_source_parity() -> None:
         "BreedGoal.class",
         "LookAtPlayerGoal.class",
         "Pufferfish.PufferfishPuffGoal.class",
+        "FollowFlockLeaderGoal.class",
+        "EntityTypes.SALMON",
         "RandomSwimmingGoal.class",
         "Squid.SquidFleeGoal.class",
         "Squid.SquidRandomMovementGoal.class",

@@ -124,6 +124,8 @@ with normal AI-enabled entities:
   allowlist/denylist behavior is checked.
 - LookControl: replacement and entity filtering are checked.
 - Pufferfish: puff, swimming, avoid-player and panic options are isolated.
+- Schooling salmon: the follow-flock-leader option removes
+  `FollowFlockLeaderGoal` from the schooling-fish subtype.
 - Squid: flee and random movement options are isolated.
 - Sheep: EatBlockGoal removal leaves FloatGoal intact.
 

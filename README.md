@@ -36,6 +36,7 @@ Minecraft version is intentionally unchanged.
     allowlist and denylist behavior.
   - LookControl replacement and entity filtering.
   - Pufferfish: puff, swimming, avoid-player and panic goals.
+  - Schooling salmon: flock-leader goal removal.
   - Squid: flee and random-movement goals independently.
 - The full GameTest + Class Tweaker + JAR verification workflow has passed
   using Java 25 and Minecraft 26.3.
