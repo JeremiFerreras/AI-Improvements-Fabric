@@ -375,7 +375,16 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                 {0.000001, -8.0, 0.0},
                 {0.0, 8.0, 0.0},
                 {0.0, -8.0, 0.0},
-                {0.0, 0.0, 0.0}
+                {0.0, 0.0, 0.0},
+                // Match vanilla's 1.0E-5 undefined-vector boundary.
+                {0.000009, 8.0, 0.0},
+                {0.000011, 8.0, 0.0},
+                {0.0, 8.0, 0.000009},
+                {0.0, 8.0, 0.000011},
+                {0.000009, 0.000009, 0.0},
+                {0.000011, 0.000009, 0.0},
+                {0.0, 0.000009, 0.000009},
+                {0.0, 0.000011, 0.000009}
         };
 
         for (int i = 0; i < targetOffsets.length; i++) {
