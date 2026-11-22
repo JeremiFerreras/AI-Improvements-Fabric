@@ -4,10 +4,12 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import com.builtbroken.ai.improvements.ConfigMain;
+import com.builtbroken.ai.improvements.ConfigMain.AnimalConfigSection;
 import com.builtbroken.ai.improvements.FixedLookControl;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.control.LookControl;
@@ -15,12 +17,14 @@ import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.EatBlockGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowFlockLeaderGoal;
+import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.RandomSwimmingGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.animal.fish.Pufferfish;
 import net.minecraft.world.entity.animal.squid.Squid;
@@ -49,9 +53,29 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                 BoolState.capture(config.removeLookRandom.configValue()),
                 BoolState.capture(config.removeLookRandom.isAllowlist()),
                 BoolState.capture(config.cow.removeFloat()),
+                BoolState.capture(config.cow.removePanic()),
                 BoolState.capture(config.cow.removeBreed()),
+                BoolState.capture(config.cow.removeTempt()),
+                BoolState.capture(config.cow.removeFollowParent()),
+                BoolState.capture(config.cow.removeStroll()),
+                BoolState.capture(config.chicken.removeFloat()),
+                BoolState.capture(config.chicken.removePanic()),
                 BoolState.capture(config.chicken.removeBreed()),
+                BoolState.capture(config.chicken.removeTempt()),
+                BoolState.capture(config.chicken.removeFollowParent()),
+                BoolState.capture(config.chicken.removeStroll()),
+                BoolState.capture(config.pig.removeFloat()),
+                BoolState.capture(config.pig.removePanic()),
+                BoolState.capture(config.pig.removeBreed()),
                 BoolState.capture(config.pig.removeTempt()),
+                BoolState.capture(config.pig.removeFollowParent()),
+                BoolState.capture(config.pig.removeStroll()),
+                BoolState.capture(config.sheep.removeFloat()),
+                BoolState.capture(config.sheep.removePanic()),
+                BoolState.capture(config.sheep.removeBreed()),
+                BoolState.capture(config.sheep.removeTempt()),
+                BoolState.capture(config.sheep.removeFollowParent()),
+                BoolState.capture(config.sheep.removeStroll()),
                 BoolState.capture(config.removeSheepEatBlock),
                 BoolState.capture(config.removeFishSwim),
                 BoolState.capture(config.removeFishAvoidPlayer),
@@ -79,10 +103,10 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             config.removeLookRandom.isAllowlist().set(false);
             config.removeLookRandom.filterList().set(List.of());
 
-            config.cow.removeFloat().set(false);
-            config.cow.removeBreed().set(false);
-            config.chicken.removeBreed().set(false);
-            config.pig.removeTempt().set(false);
+            disableAnimalOptions(config.cow);
+            disableAnimalOptions(config.chicken);
+            disableAnimalOptions(config.pig);
+            disableAnimalOptions(config.sheep);
             config.removeSheepEatBlock.set(false);
 
             config.removeFishSwim.set(false);
@@ -198,34 +222,12 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                     "Sheep in the LookControl allowlist must receive FixedLookControl");
             helper.discard(allowlistedSheep);
 
-            // The per-animal config sections must affect their own entity
-            // types, not just the cow section. Confirm each target goal exists
-            // in the unmodified vanilla mob before enabling its removal.
-            Mob baselineChicken = helper.spawn(EntityTypes.CHICKEN, BlockPos.ZERO);
-            helper.assertTrue(hasGoal(baselineChicken, BreedGoal.class),
-                    "Baseline chicken must have BreedGoal");
-            helper.discard(baselineChicken);
-
-            config.chicken.removeBreed().set(true);
-            Mob chicken = helper.spawn(EntityTypes.CHICKEN, BlockPos.ZERO);
-            helper.assertFalse(hasGoal(chicken, BreedGoal.class),
-                    "Chicken remove_breed must remove BreedGoal");
-            helper.discard(chicken);
-
-            Mob baselinePig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
-            helper.assertTrue(hasGoal(baselinePig, TemptGoal.class),
-                    "Baseline pig must have TemptGoal");
-            helper.assertTrue(hasGoal(baselinePig, BreedGoal.class),
-                    "Baseline pig must have BreedGoal");
-            helper.discard(baselinePig);
-
-            config.pig.removeTempt().set(true);
-            Mob pig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
-            helper.assertFalse(hasGoal(pig, TemptGoal.class),
-                    "Pig remove_tempt must remove TemptGoal");
-            helper.assertTrue(hasGoal(pig, BreedGoal.class),
-                    "Pig remove_tempt must preserve BreedGoal");
-            helper.discard(pig);
+            // Cover all six options for all four farm-animal config sections.
+            // Every case confirms the goal exists before checking its removal.
+            verifyAnimalOptions(helper, EntityTypes.COW, config.cow, "Cow");
+            verifyAnimalOptions(helper, EntityTypes.CHICKEN, config.chicken, "Chicken");
+            verifyAnimalOptions(helper, EntityTypes.PIG, config.pig, "Pig");
+            verifyAnimalOptions(helper, EntityTypes.SHEEP, config.sheep, "Sheep");
 
             // Fish options are independent for the shared AbstractFish editor.
             config.replaceLookController.configValue().set(false);
@@ -332,6 +334,55 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
         }
 
         helper.succeed();
+    }
+
+    private static void disableAnimalOptions(AnimalConfigSection section) {
+        section.removeFloat().set(false);
+        section.removePanic().set(false);
+        section.removeBreed().set(false);
+        section.removeTempt().set(false);
+        section.removeFollowParent().set(false);
+        section.removeStroll().set(false);
+    }
+
+    private static void verifyAnimalOptions(
+            GameTestHelper helper,
+            EntityType<? extends Mob> entityType,
+            AnimalConfigSection section,
+            String animalName) {
+        verifyAnimalGoalRemoval(helper, entityType, section.removeFloat(),
+                FloatGoal.class, animalName + " remove_float");
+        verifyAnimalGoalRemoval(helper, entityType, section.removePanic(),
+                PanicGoal.class, animalName + " remove_panic");
+        verifyAnimalGoalRemoval(helper, entityType, section.removeBreed(),
+                BreedGoal.class, animalName + " remove_breed");
+        verifyAnimalGoalRemoval(helper, entityType, section.removeTempt(),
+                TemptGoal.class, animalName + " remove_tempt");
+        verifyAnimalGoalRemoval(helper, entityType, section.removeFollowParent(),
+                FollowParentGoal.class, animalName + " remove_follow_parent");
+        verifyAnimalGoalRemoval(helper, entityType, section.removeStroll(),
+                WaterAvoidingRandomStrollGoal.class, animalName + " remove_stroll");
+    }
+
+    private static void verifyAnimalGoalRemoval(
+            GameTestHelper helper,
+            EntityType<? extends Mob> entityType,
+            ConfigMain.BooleanValue option,
+            Class<? extends Goal> goalClass,
+            String settingName) {
+        option.set(false);
+        Mob baseline = helper.spawn(entityType, BlockPos.ZERO);
+        helper.assertTrue(hasGoal(baseline, goalClass),
+                "Baseline " + settingName + " must contain " + goalClass.getSimpleName());
+        helper.discard(baseline);
+
+        option.set(true);
+        Mob modified = helper.spawn(entityType, BlockPos.ZERO);
+        helper.assertFalse(hasGoal(modified, goalClass),
+                settingName + " must remove " + goalClass.getSimpleName());
+        helper.discard(modified);
+
+        option.set(false);
     }
 
     private static boolean hasGoal(Mob mob, Class<? extends Goal> goalClass) {
