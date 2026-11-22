@@ -1,8 +1,9 @@
 # AI Improvements — Fabric 26.3
 
 This branch contains the Fabric 26.3 port of the original NeoForge 26.3
-implementation. The work is still in the implementation phase; no release or
-practical-stability designation is being made.
+implementation. The original runtime feature set is implemented and has passed
+the bounded automated CI validation described below. The artifact remains an
+unstable development build; full modpack stability has not been established.
 
 ## Ported code
 
