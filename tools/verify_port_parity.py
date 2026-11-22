@@ -272,20 +272,27 @@ def check_fabric_metadata() -> None:
         "MOB_GROUPS",
         "AI_TICK_WINDOW_SECONDS = 20",
         "EXPECTED_MOBS_PER_TYPE = 12",
+        "pen_setup_commands",
+        "force_load_commands",
         "population_check_commands",
         "AIIMP_{prefix}_{name.upper()}_COUNT_OK",
+        "AIIMP_SPAWN_{name.upper()}_COUNT_OK",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
-        "mode=\"reload\"",
+        "AIIMP_RELOAD_{name.upper()}_COUNT_OK",
         "PersistenceRequired:1b",
         "minecraft:stone",
         "minecraft:glass",
-        "fill 17 80 1 30 82 14 minecraft:water",
-        "forceload add 1 0",
+        "minecraft:water",
+        "forceload add {chunk_x} 0",
+        "mob_grid(3, 3, 80)",
+        "mob_grid(99, 3, 81)",
     ):
         require(marker in smoke, f"Production server smoke coverage missing: {marker}")
     require("NoAI:1b" not in smoke,
             "Production server mobs must run their normal AI goals during the tick window")
+    require("forceload add 1 0" not in smoke,
+            "Each test population must force-load its own 16-block chunk coordinate")
     for entity_name in ("cow", "chicken", "pig", "sheep", "salmon", "squid", "pufferfish"):
         require(f'"{entity_name}", "minecraft:{entity_name}"' in smoke,
                 f"Production server population is missing {entity_name}")
