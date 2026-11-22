@@ -43,18 +43,22 @@ This task compiles the Fabric source, validates the Class Tweaker configuration
 and creates the packaged JAR. It deliberately does **not** run GameTests or
 launch a client/server.
 
-The CI validation workflow also runs the GameTest server and the remapped JAR
-through Fabric's production dedicated-server launcher. The production smoke
-spawns representative mob types, checks generated config, saves the world and
-shuts the server down.
+The CI validation workflow runs the GameTest server, the remapped JAR through
+Fabric's production dedicated-server launcher, and the packaged client under
+Xvfb. The dedicated-server smoke keeps 84 mobs across seven species active for
+60 seconds, verifies that every species changes position, unloads/reloads their
+chunks, checks movement again for 30 seconds, saves the world, restarts the
+server and verifies disk-loaded populations. GameTests cover each exposed
+goal option and compare the optimized look controller against vanilla at
+edge-angle and gradual-turn samples.
 
-## Deferred functional checks
+The client smoke confirms packaged-mod initialization, LWJGL/resource
+initialization, graphics backend selection and config generation. It does not
+simulate human input or physical GPU rendering.
 
-The GameTest source suite remains under `src/gametest/` and runs in CI.
-Natural spawning, spawn eggs, third-party AI compatibility, long-duration
-server behavior, high-mob-count performance and an interactive client session
-remain unverified in practice. The production client smoke is limited to headless
-startup and resource initialization.
+Natural spawning across all entity families, third-party AI compatibility,
+long-duration multiplayer, large modpack interactions and performance at much
+higher entity counts remain unverified in practice.
 
 The JSON configuration is read at startup; there is no GUI or live reload.
 Goal replacement remains unsupported, matching the upstream TODO.
