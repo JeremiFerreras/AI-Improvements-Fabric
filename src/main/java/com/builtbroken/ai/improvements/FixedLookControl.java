@@ -18,6 +18,9 @@ public class FixedLookControl extends LookControl {
         double dy = this.wantedY - (this.mob.getY() + this.mob.getEyeHeight());
         double dz = this.wantedZ - this.mob.getZ();
         double horizontalDistance = Mth.sqrt((float) (dx * dx + dz * dz));
+        if (!(Math.abs(dy) > 1.0E-5F) && !(Math.abs(horizontalDistance) > 1.0E-5F)) {
+            return Optional.empty();
+        }
         return Optional.of((float) (-(tan(dy, horizontalDistance) * 57.2957763671875D)));
     }
 
@@ -25,6 +28,9 @@ public class FixedLookControl extends LookControl {
     protected Optional<Float> getYRotD() {
         double dx = this.wantedX - this.mob.getX();
         double dz = this.wantedZ - this.mob.getZ();
+        if (!(Math.abs(dz) > 1.0E-5F) && !(Math.abs(dx) > 1.0E-5F)) {
+            return Optional.empty();
+        }
         return Optional.of((float) (tan(dz, dx) * 57.2957763671875D) - 90.0F);
     }
 
