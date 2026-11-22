@@ -30,3 +30,11 @@ jobs:
 
       - name: Validate Class Tweaker and build
         run: ./gradlew --no-daemon validateAccessWidener build
+
+      - name: Upload experimental JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-improvements-fabric-26.3-unstable
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
