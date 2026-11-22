@@ -98,10 +98,10 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             config.removeSquidFlee.set(false);
             config.removeRandomMove.set(false);
 
-            Mob cow = helper.spawnWithNoFreeWill(EntityTypes.COW, BlockPos.ZERO);
-            Mob sheep = helper.spawnWithNoFreeWill(EntityTypes.SHEEP, new BlockPos(2, 0, 0));
-            Mob pufferfish = helper.spawnWithNoFreeWill(EntityTypes.PUFFERFISH, new BlockPos(4, 0, 0));
-            Mob squid = helper.spawnWithNoFreeWill(EntityTypes.SQUID, new BlockPos(6, 0, 0));
+            Mob cow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            Mob sheep = helper.spawn(EntityTypes.SHEEP, new BlockPos(2, 0, 0));
+            Mob pufferfish = helper.spawn(EntityTypes.PUFFERFISH, new BlockPos(4, 0, 0));
+            Mob squid = helper.spawn(EntityTypes.SQUID, new BlockPos(6, 0, 0));
 
             logGoals("cow", cow);
             logGoals("sheep", sheep);
