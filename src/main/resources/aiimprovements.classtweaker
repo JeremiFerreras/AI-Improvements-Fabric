@@ -1,0 +1,15 @@
+classTweaker v1 official
+
+# GoalSelector.availableGoals
+accessible field net/minecraft/world/entity/ai/goal/GoalSelector availableGoals Ljava/util/Set;
+
+# Mob look controller and LookControl state
+accessible field net/minecraft/world/entity/Mob lookControl Lnet/minecraft/world/entity/ai/control/LookControl;
+accessible field net/minecraft/world/entity/ai/control/LookControl xMaxRotAngle F
+accessible field net/minecraft/world/entity/ai/control/LookControl yMaxRotSpeed F
+accessible field net/minecraft/world/entity/ai/control/LookControl lookAtCooldown I
+
+# Entity-specific goal classes inspected by the original AI modifier rules.
+accessible class net/minecraft/world/entity/animal/squid/Squid$SquidRandomMovementGoal
+accessible class net/minecraft/world/entity/animal/squid/Squid$SquidFleeGoal
+accessible class net/minecraft/world/entity/animal/fish/Pufferfish$PufferfishPuffGoal
