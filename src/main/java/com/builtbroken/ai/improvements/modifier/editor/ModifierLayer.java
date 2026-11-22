@@ -12,7 +12,14 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 
-/** Ordered set of goal edits. Goal removals are deferred until iteration finishes. */
+/**
+ * Ordered goal-edit pipeline.
+ *
+ * <p>Removals are queued while iterating the selector so the selector's backing
+ * set is never mutated during traversal. Adaptive ordering only changes the
+ * order in which independent predicates are evaluated; it does not change
+ * which predicates are registered or which goals they match.
+ */
 public final class ModifierLayer {
     private ModifierNode[] nodes = new ModifierNode[5];
     private int size;
@@ -48,6 +55,7 @@ public final class ModifierLayer {
             }
         }
 
+        // Apply mutations only after the selector has been fully traversed.
         for (Goal goal : goalsToRemove) {
             selector.removeGoal(goal);
         }
@@ -64,14 +72,18 @@ public final class ModifierLayer {
             Goal result = modifier.handle(entity, goal);
 
             if (result != goal) {
-                // Count every successful edit before comparing frequencies. The old
-                // order compared two permanently-zero counters, so bubbling never ran.
-                modifier.callCount++;
-                if (modifier.callCount >= Integer.MAX_VALUE / 2) {
-                    resortNormalize = true;
-                } else if (ConfigMain.CONFIG.enableCallBubbling.get()
-                        && i != 0 && modifier.callCount > nodes[i - 1].callCount) {
-                    bubble(modifier, i);
+                // Do not collect statistics or reorder anything when the option
+                // is disabled. The old NeoForge implementation only incremented
+                // inside bubble(), after comparing two initially-zero counters,
+                // so the adaptive order never started moving.
+                if (ConfigMain.CONFIG.enableCallBubbling.get()) {
+                    modifier.callCount++;
+
+                    if (modifier.callCount >= Integer.MAX_VALUE / 2) {
+                        resortNormalize = true;
+                    } else if (i > 0 && modifier.callCount > nodes[i - 1].callCount) {
+                        bubble(modifier, i);
+                    }
                 }
                 return result;
             }
@@ -79,20 +91,24 @@ public final class ModifierLayer {
         return goal;
     }
 
+    /**
+     * Rebuilds the order when counters approach overflow.
+     *
+     * <p>Higher hit counts must be first because processing starts at index 0.
+     * Halving preserves relative frequency; dividing by the sum rounded down
+     * would turn nearly every counter into zero and erase the learned order.
+     */
     protected void resort(boolean normalize) {
-        if (size == 0) {
+        if (size < 2) {
             return;
         }
-        Arrays.sort(nodes, 0, size, Comparator.comparingInt(node -> node.callCount));
+
+        Arrays.sort(nodes, 0, size,
+                Comparator.comparingInt((ModifierNode node) -> node.callCount).reversed());
+
         if (normalize) {
-            long sum = 0;
             for (int i = 0; i < size; i++) {
-                sum += nodes[i].callCount;
-            }
-            if (sum > 0) {
-                for (int i = 0; i < size; i++) {
-                    nodes[i].callCount = (int) Math.floor(nodes[i].callCount / (double) sum);
-                }
+                nodes[i].callCount >>>= 1;
             }
         }
     }

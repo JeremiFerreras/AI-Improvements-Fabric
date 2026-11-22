@@ -6,23 +6,35 @@
 | `neoforge.mods.toml` | `fabric.mod.json` | Added |
 | `@Mod` | `ModInitializer` | Added |
 | NeoForge event bus / `@SubscribeEvent` | Explicit Fabric API event registration | Added |
-| `EntityJoinLevelEvent` | `ServerEntityEvents.ALLOW_LOAD` | Wired; runtime timing needs validation |
+| `EntityJoinLevelEvent` | `ServerEntityEvents.ALLOW_LOAD` | Same pre-insertion manager hook; server side |
 | `ModConfigSpec` | Gson JSON config in Fabric config directory | Ported |
-| Access Transformer | Fabric Class Tweaker file | Added; pending Loom validation |
+| Access Transformer | Fabric Class Tweaker file | Validated against 26.3 |
 | `ModifierSystem` | Active Fabric-side goal/filter pipeline | Ported |
-| `ModifierLayer` / editor/filter nodes | Active Fabric-side implementation | Ported; iteration bounds tightened |
+| `ModifierLayer` / filter nodes | Active Fabric-side implementation | Ported and overflow behavior corrected |
 | `FixedLookControl` / `FastTrig` | Active Fabric-side implementation | Reused and wired |
 
-## Internal access
+## Event insertion point
 
-The NeoForge Access Transformer exposed `GoalSelector.availableGoals`, `Mob.lookControl`, three `LookControl` fields and private nested Squid/Pufferfish goal classes.
+NeoForge 26.3 posts `EntityJoinLevelEvent` at the head of
+`PersistentEntitySectionManager.addEntity(entity, loaded)`, before entity
+insertion. Fabric API 26.3 invokes `ServerEntityEvents.ALLOW_LOAD` from a
+Mixin at `@At("HEAD")` of the same method. The Fabric port uses this
+pre-insertion event rather than the later `ENTITY_LOAD` callback.
 
-The Fabric branch uses a `.classtweaker` file with the Minecraft 26.3 `official` namespace. Loom's `validateAccessWidener` task must verify the names and descriptors against the exact versioned game jar. Do not treat these entries as verified until the CI check passes.
+## Adaptive ordering
 
-## Lifecycle timing
+The port increments `ModifierLayer` hit counts only when adaptive ordering is
+enabled. At the overflow guard it sorts higher-frequency predicates first and
+halves counters to preserve their relative order. `FilterLayer` uses the same
+hottest-first overflow treatment. These changes affect evaluation order, not
+the set of goal types modified.
 
-Fabric's `ServerEntityEvents.ALLOW_LOAD` runs immediately before an entity is loaded into a `ServerLevel`; this is a closer candidate for NeoForge's join-level hook than the post-load `ENTITY_LOAD` callback. In-game regression checks are still required for newly spawned entities, disk-loaded entities and compatibility with other mods that add goals during entity load.
+## Intentional upstream bug fixes
 
-## Behavior preservation
+- Pufferfish puff now reads `removeFishPuff` rather than the original
+  `removeFishFollowLeader` reference.
+- Squid flee now reads `removeSquidFlee` rather than the original
+  `removeRandomMove` reference.
 
-The active port keeps the upstream goal/filter architecture. Two incorrect setting references found in the NeoForge source were corrected on the Fabric side: Pufferfish's puff goal is controlled by `remove_puff`, and Squid's flee goal by `remove_flee`. The preserved legacy snapshot remains unchanged for comparison.
+See [BEHAVIOR_PARITY.md](BEHAVIOR_PARITY.md) for the detailed rationale and
+remaining runtime validation requirements.

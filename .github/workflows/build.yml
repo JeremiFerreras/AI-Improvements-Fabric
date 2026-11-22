@@ -6,7 +6,7 @@ on:
       - "port/fabric-26.3-bootstrap"
   pull_request:
     branches:
-      - "26.3"
+      - "port/fabric-26.3-bootstrap"
   workflow_dispatch:
 
 permissions:
@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Check NeoForge/Fabric source parity
+        run: python tools/verify_port_parity.py
+
       - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
@@ -30,6 +38,13 @@ jobs:
 
       - name: Validate Class Tweaker and build
         run: ./gradlew --no-daemon validateAccessWidener build
+
+      - name: Verify remapped JAR
+        shell: bash
+        run: |
+          JAR="$(find build/libs -maxdepth 1 -type f -name '*-unstable.jar' ! -name '*sources*' | head -n 1)"
+          test -n "$JAR"
+          python tools/verify_port_parity.py --jar "$JAR"
 
       - name: Upload experimental JARs
         uses: actions/upload-artifact@v4

@@ -1,29 +1,39 @@
 # AI Improvements — Fabric 26.3
 
-> **Experimental / unstable port.** The first AI editing pipeline is wired, but this branch is not a stable release and has not yet passed in-game behavior testing.
+> **Experimental / unstable port.** This branch has a source-level parity
+> check and a compiled Fabric JAR, but it is not yet a stable release.
 
-This branch ports the NeoForge 26.3 version to Fabric 26.3. The Minecraft version is intentionally unchanged.
+This branch ports the NeoForge 26.3 implementation to Fabric 26.3. The
+Minecraft version is intentionally unchanged.
 
 ## Current experimental features
 
 - Fabric Loom build, Loader entrypoint and metadata.
-- Server-side entity insertion hook using `ServerEntityEvents.ALLOW_LOAD`.
+- Pre-insertion server entity hook using `ServerEntityEvents.ALLOW_LOAD`.
 - JSON configuration at `config/aiimprovements.json`.
-- Original filter and modifier-layer pipeline, now active in Fabric source.
+- Original filter and modifier pipeline adapted to Fabric.
 - Generic mob, fish, pufferfish, squid, cow, chicken, pig and sheep goal rules.
-- Cached `FastTrig` look math and `FixedLookControl` replacement.
-- Fabric Class Tweaker targets for the vanilla internals previously opened by the NeoForge Access Transformer.
-- Original NeoForge Java source and metadata retained under `src/legacy-neoforge/` as a comparison reference.
+- Cached `FastTrig` math and `FixedLookControl` replacement.
+- Fabric Class Tweaker entries for the vanilla fields/classes exposed by the
+  NeoForge Access Transformer.
+- Original NeoForge Java sources and metadata retained under
+  `src/legacy-neoforge/`.
 
-## Known limitations
+## Parity and known limitations
 
-- Class Tweaker targets must pass the 26.3 Loom validation task.
-- Entity insertion timing and compatibility with other entity/AI mods need in-game verification.
-- The JSON configuration is read on startup; there is no configuration screen or live reload.
-- Goal replacement is not implemented (the upstream implementation also leaves this as a TODO).
-- Client and dedicated-server launch tests and performance profiling are still required.
+- The exact event insertion point has been compared in Fabric API and NeoForge
+  26.3 sources.
+- A source-level parity script checks registered goal rules, defaults, access
+  widening, FastTrig identity and safe deferred goal removal.
+- Two mismatched upstream configuration references are corrected for
+  pufferfish puff and squid flee; see [behavior parity](docs/BEHAVIOR_PARITY.md).
+- No in-game regression suite has yet proved identical behavior for every
+  vanilla or third-party mob.
+- The JSON configuration is read at startup; there is no GUI or live reload.
+- Goal replacement remains unsupported, matching the upstream TODO.
 
-**Do not use this branch as a stable release.** Settings can remove AI goals and change entity behavior.
+**Do not use this branch as a stable release.** Incorrect goal-removal settings
+can change mob behavior.
 
 ## Requirements
 
@@ -32,29 +42,33 @@ This branch ports the NeoForge 26.3 version to Fabric 26.3. The Minecraft versio
 - Fabric Loader 0.20.1 or newer
 - Fabric API 0.166.2+26.3
 
-## Build
+## Build and verify
 
 Windows:
 
 ```bat
+gradlew.bat verifyPortParity
 gradlew.bat validateAccessWidener build
 ```
 
 Linux/macOS:
 
 ```bash
-./gradlew validateAccessWidener build
+./gradlew verifyPortParity validateAccessWidener build
 ```
 
 The remapped mod JAR is produced under `build/libs/`.
 
-## Porting notes
+## Porting documents
 
-- [Port status and verification](docs/FABRIC_PORTING_STATUS.md)
+- [Behavior parity review](docs/BEHAVIOR_PARITY.md)
+- [Configuration reference](docs/CONFIGURATION.md)
+- [Port status](docs/FABRIC_PORTING_STATUS.md)
 - [NeoForge-to-Fabric mapping](docs/PORTING_MAP.md)
 
 ## Upstream
 
 Original project and feature design: [Built Broken Modding — AI Improvements](https://github.com/BuiltBrokenModding/AI-Improvements).
 
-The original MIT license is retained. This Fabric port is maintained separately from the NeoForge source branch.
+The original MIT license is retained. This Fabric port is maintained separately
+from the NeoForge source branch.

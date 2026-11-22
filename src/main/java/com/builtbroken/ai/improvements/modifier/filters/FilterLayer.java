@@ -5,8 +5,15 @@ import java.util.Comparator;
 
 import net.minecraft.world.entity.Entity;
 
-/** Short-circuiting entity filter pipeline with per-node call-frequency bubbling. */
+/**
+ * Short-circuiting entity filter pipeline with adaptive ordering.
+ *
+ * <p>FILTERED consumes the entity at this level. MODIFIED records that a
+ * previous node changed it but deliberately continues through later filters.
+ */
 public final class FilterLayer extends FilterNode {
+    private static final int COUNTER_RENORMALIZE_THRESHOLD = Integer.MAX_VALUE / 2;
+
     private FilterNode[] nodes = new FilterNode[5];
     private int size;
 
@@ -29,36 +36,51 @@ public final class FilterLayer extends FilterNode {
             return result;
         }
 
+        boolean modified = result == FilterResult.MODIFIED;
+
         for (int i = 0; i < size; i++) {
             FilterNode node = nodes[i];
             result = node.handle(entity);
 
             if (result == FilterResult.FILTERED) {
                 node.callCount++;
-                if (node.callCount >= Integer.MAX_VALUE / 2) {
+
+                if (node.callCount >= COUNTER_RENORMALIZE_THRESHOLD) {
                     resortAndNormalize();
                 } else if (i > 0 && node.callCount > nodes[i - 1].callCount) {
-                    nodes[i] = nodes[i - 1];
-                    nodes[i - 1] = node;
+                    bubble(node, i);
                 }
-                return result;
+                return FilterResult.FILTERED;
             }
-            // MODIFIED deliberately continues; DID_NOTHING also falls through.
+
+            if (result == FilterResult.MODIFIED) {
+                modified = true;
+            }
         }
-        return result;
+
+        // Do not lose an earlier modification merely because a later,
+        // unrelated filter returned DID_NOTHING.
+        return modified ? FilterResult.MODIFIED : FilterResult.DID_NOTHING;
     }
 
     private void resortAndNormalize() {
-        Arrays.sort(nodes, 0, size, Comparator.comparingInt(node -> node.callCount));
-        long sum = 0;
-        for (int i = 0; i < size; i++) {
-            sum += nodes[i].callCount;
-        }
-        if (sum == 0) {
+        if (size < 2) {
             return;
         }
+
+        // Frequently matching nodes are evaluated first.
+        Arrays.sort(nodes, 0, size,
+                Comparator.comparingInt((FilterNode node) -> node.callCount).reversed());
+
+        // Preserve relative frequency. floor(count / sum) would collapse
+        // almost every positive counter to zero.
         for (int i = 0; i < size; i++) {
-            nodes[i].callCount = (int) Math.floor(nodes[i].callCount / (double) sum);
+            nodes[i].callCount >>>= 1;
         }
+    }
+
+    private void bubble(FilterNode node, int index) {
+        nodes[index] = nodes[index - 1];
+        nodes[index - 1] = node;
     }
 }
