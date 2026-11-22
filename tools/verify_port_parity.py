@@ -263,6 +263,8 @@ def check_fabric_metadata() -> None:
             "Production dedicated-server smoke task is missing")
     require('mods.from(tasks.named("jar").flatMap { it.archiveFile })' in build,
             "Production smoke must run the remapped distribution JAR")
+    require('productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"' in build,
+            "Production smoke launcher must include the declared Fabric API mod dependency")
     smoke = read(ROOT / "tools/run_prod_server_smoke.py")
     for marker in (
         "Summoned new Cow",
