@@ -60,12 +60,13 @@ The workflow on this branch performs:
    generated configuration.
 8. Final inspection of the remapped distribution JAR and uploaded smoke logs.
 
-A full earlier production run,
-[45070846309](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45070846309),
-passed packaged-client startup, dedicated-server launch, entity movement,
-chunk reload and disk persistence. The current iteration extends that coverage
-with deterministic post-reload PanicGoal stimulation; its final CI run must
-complete before this extension is considered passed.
+The complete automated validation, including the deterministic
+post-reload PanicGoal stimulus, passed in CI run
+[45071550721](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45071550721)
+on code commit `0570c77978761c496f528a1856c9509f547ad6e5`. The later branch
+commits through `139a520f1f1527f3eb82a45b2e191d32224637b6` change only README
+and documentation files; no runtime source or test code changed after the
+successful run.
 
 ## Limits not established by CI
 
