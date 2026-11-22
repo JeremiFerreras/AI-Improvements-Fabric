@@ -25,7 +25,10 @@ LOG_FILE = ROOT / "build" / "production-server-smoke.log"
 START_TIMEOUT_SECONDS = 240
 STOP_TIMEOUT_SECONDS = 90
 
-AI_TICK_WINDOW_SECONDS = 20
+AI_TICK_WINDOW_SECONDS = 60
+CHUNK_UNLOAD_WAIT_SECONDS = 12
+CHUNK_RELOAD_WAIT_SECONDS = 5
+COMMAND_PACING_SECONDS = 0.05
 EXPECTED_MOBS_PER_TYPE = 12
 
 # Each species gets its own fully enclosed 16x16 room and force-loaded chunk.
@@ -41,13 +44,13 @@ def mob_grid(x_start: int, z_start: int, y: int) -> tuple[tuple[int, int, int], 
 
 
 MOB_GROUPS = (
-    ("cow", "minecraft:cow", "AIIMP_PERSIST_COW", mob_grid(3, 3, 80)),
-    ("chicken", "minecraft:chicken", "AIIMP_PERSIST_CHICKEN", mob_grid(19, 3, 80)),
-    ("pig", "minecraft:pig", "AIIMP_PERSIST_PIG", mob_grid(35, 3, 80)),
-    ("sheep", "minecraft:sheep", "AIIMP_PERSIST_SHEEP", mob_grid(51, 3, 80)),
-    ("salmon", "minecraft:salmon", "AIIMP_PERSIST_SALMON", mob_grid(67, 3, 81)),
-    ("squid", "minecraft:squid", "AIIMP_PERSIST_SQUID", mob_grid(83, 3, 81)),
-    ("pufferfish", "minecraft:pufferfish", "AIIMP_PERSIST_PUFFERFISH", mob_grid(99, 3, 81)),
+    ("cow", "minecraft:cow", "AIIMP_PERSIST_COW", mob_grid(131, 3, 80)),
+    ("chicken", "minecraft:chicken", "AIIMP_PERSIST_CHICKEN", mob_grid(147, 3, 80)),
+    ("pig", "minecraft:pig", "AIIMP_PERSIST_PIG", mob_grid(163, 3, 80)),
+    ("sheep", "minecraft:sheep", "AIIMP_PERSIST_SHEEP", mob_grid(179, 3, 80)),
+    ("salmon", "minecraft:salmon", "AIIMP_PERSIST_SALMON", mob_grid(195, 3, 81)),
+    ("squid", "minecraft:squid", "AIIMP_PERSIST_SQUID", mob_grid(211, 3, 81)),
+    ("pufferfish", "minecraft:pufferfish", "AIIMP_PERSIST_PUFFERFISH", mob_grid(227, 3, 81)),
 )
 
 
@@ -102,6 +105,14 @@ def population_check_commands(prefix: str) -> tuple[str, ...]:
             f"matches {EXPECTED_MOBS_PER_TYPE}.. run say AIIMP_{prefix}_{name.upper()}_COUNT_OK",
         ))
     return tuple(commands)
+
+
+def unloaded_check_commands() -> tuple[str, ...]:
+    return tuple(
+        f"execute unless entity @e[type={entity_type},tag={tag},limit=1] "
+        f"run say AIIMP_UNLOADED_{name.upper()}_OK"
+        for name, entity_type, tag, _ in MOB_GROUPS
+    )
 
 
 def prepare_run_directory() -> None:
@@ -189,6 +200,8 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
     stream_closed = False
     save_deadline: float | None = None
     ai_tick_deadline: float | None = None
+    chunk_unload_deadline: float | None = None
+    chunk_reload_deadline: float | None = None
     failure: str | None = None
 
     def send(command_text: str) -> None:
@@ -206,10 +219,30 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
             send("say AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE")
             for count_command in population_check_commands("ACTIVE"):
                 send(count_command)
+            send("forceload remove all")
+            send("say AIIMP_CHUNK_UNLOAD_REQUESTED")
+            chunk_unload_deadline = time.monotonic() + CHUNK_UNLOAD_WAIT_SECONDS
+            ai_tick_deadline = None
+
+        if chunk_unload_deadline is not None and now >= chunk_unload_deadline and not save_requested:
+            # These entity selectors only see loaded entities. Their success
+            # markers therefore prove the seven remote pens really unloaded.
+            for unload_check in unloaded_check_commands():
+                send(unload_check)
+            send("say AIIMP_CHUNK_UNLOAD_CHECK_COMPLETE")
+            for force_load in force_load_commands():
+                send(force_load)
+            send("say AIIMP_CHUNK_RELOAD_REQUESTED")
+            chunk_reload_deadline = time.monotonic() + CHUNK_RELOAD_WAIT_SECONDS
+            chunk_unload_deadline = None
+
+        if chunk_reload_deadline is not None and now >= chunk_reload_deadline and not save_requested:
+            for count_command in population_check_commands("CHUNK_RELOAD"):
+                send(count_command)
             send("save-all flush")
             save_requested = True
             save_deadline = time.monotonic() + 20
-            ai_tick_deadline = None
+            chunk_reload_deadline = None
 
         if save_deadline is not None and now > save_deadline and not stop_requested:
             send("stop")
@@ -236,10 +269,14 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if "done (" in lower and not ready:
             ready = True
             if mode == "spawn":
+                # Pace setup and summon commands so the test harness itself
+                # does not create an artificial single-tick command backlog.
                 for command_text in pen_setup_commands():
                     send(command_text)
+                    time.sleep(COMMAND_PACING_SECONDS)
                 for command_text in summon_commands():
                     send(command_text)
+                    time.sleep(COMMAND_PACING_SECONDS)
                 send("say AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED")
                 # Keep the actual dedicated server alive while all 84 mobs
                 # execute their normal AI goals inside the force-loaded pens.
@@ -379,9 +416,16 @@ def main() -> int:
         "Summoned new Pufferfish",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
+        "AIIMP_CHUNK_UNLOAD_REQUESTED",
+        "AIIMP_CHUNK_UNLOAD_CHECK_COMPLETE",
+        "AIIMP_CHUNK_RELOAD_REQUESTED",
         "Saved the game",
     ) + tuple(
         f"AIIMP_ACTIVE_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
+        f"AIIMP_UNLOADED_{name.upper()}_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
+        f"AIIMP_CHUNK_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
         f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     )
@@ -431,6 +475,8 @@ def main() -> int:
     print("PASS: production server loaded AI Improvements and Fabric API")
     print(f"PASS: {len(MOB_GROUPS) * EXPECTED_MOBS_PER_TYPE} AI-enabled mobs were spawned in seven independent pens")
     print(f"PASS: all seven entity populations survived {AI_TICK_WINDOW_SECONDS}s of normal AI ticking")
+    print("PASS: all seven remote entity chunks unloaded after force-load tickets were removed")
+    print("PASS: all seven entity populations survived an in-session chunk reload")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
     print("PASS: second production server startup reopened the saved world")
