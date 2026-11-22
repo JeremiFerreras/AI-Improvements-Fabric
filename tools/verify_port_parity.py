@@ -273,7 +273,7 @@ def check_fabric_metadata() -> None:
         "AI_TICK_WINDOW_SECONDS = 20",
         "EXPECTED_MOBS_PER_TYPE = 12",
         "population_check_commands",
-        'f"AIIMP_{prefix}_{name.upper()}_COUNT_OK"',
+        "AIIMP_{prefix}_{name.upper()}_COUNT_OK",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
         "mode=\"reload\"",
