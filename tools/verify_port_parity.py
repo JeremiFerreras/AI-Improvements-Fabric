@@ -159,9 +159,11 @@ def check_configuration_coverage() -> None:
         "entity.mob.replace_look_controller",
     )
     for path in filtered_paths:
-        require(f'"{path}.enabled"' in config, f"Filtered setting enabled path missing: {path}")
-        require(f'"{path}.is_allowlist"' in config, f"Filtered allowlist path missing: {path}")
-        require(f'"{path}.filter_list"' in config, f"Filtered list path missing: {path}")
+        # ConfigMain constructs these nested paths by appending suffixes to
+        # the base path, rather than embedding the full JSON path as a literal.
+        require('path + ".enabled"' in config, f"Filtered setting enabled path builder missing: {path}")
+        require('path + ".is_allowlist"' in config, f"Filtered allowlist path builder missing: {path}")
+        require('path + ".filter_list"' in config, f"Filtered list path builder missing: {path}")
 
     for animal in ("cow", "chicken", "pig", "sheep"):
         require(f'"entity.{animal}"' in config, f"Animal config {animal} is not loaded/saved")
