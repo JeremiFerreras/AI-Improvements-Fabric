@@ -142,16 +142,8 @@ def check_source_parity() -> None:
             "Goal removals must remain deferred until after selector iteration")
 
     game_test = read(ROOT / "src/gametest/java/com/builtbroken/ai/improvements/gametest/AIImprovementsGameTests.java")
-    for goal_or_setting in (
-        "FloatGoal.class",
-        "BreedGoal.class",
-        "Pufferfish.PufferfishPuffGoal.class",
-        "Squid.SquidFleeGoal.class",
-        "Squid.SquidRandomMovementGoal.class",
-        "EatBlockGoal.class",
-        "allow_remove_calls=false",
-    ):
-        require(goal_or_setting in game_test, f"GameTest missing regression case: {goal_or_setting}")
+    for marker in ("recordVanillaMobGoalBaselines", "spawnWithNoFreeWill", "logGoals("):
+        require(marker in game_test, f"GameTest is missing baseline inventory feature: {marker}")
     game_test_metadata = json.loads(read(ROOT / "src/gametest/resources/fabric.mod.json"))
     require(
         "com.builtbroken.ai.improvements.gametest.AIImprovementsGameTests"

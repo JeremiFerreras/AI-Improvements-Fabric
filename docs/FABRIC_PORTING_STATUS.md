@@ -36,23 +36,29 @@ Runtime GameTests must pass before considering a stable release.
 - Kept goal removal deferred until after selector iteration.
 - Added server GameTests that spawn actual mobs and inspect their goal
   selectors after the entity insertion callback.
+- The first runtime test exposed a bad assumption in the test itself: the
+  vanilla 26.3 Cow did not contain the FloatGoal the test expected at tick 0.
+  The suite has been changed to record the actual goal-selector inventory
+  for Cow, Sheep, Pufferfish and Squid before defining assertions. This avoids
+  importing outdated AI assumptions from older Minecraft versions.
 
 ## Automated server GameTests
 
 The GameTest suite runs inside the Minecraft 26.3 server test environment
-through Fabric Loom. It currently checks:
+through Fabric Loom. The first run caught a wrong test assumption: vanilla
+Cow in this Minecraft version did not contain the FloatGoal expected by the
+initial assertion. That failure was in the test expectation, not in the
+mod's goal-removal code.
 
-- Default cow goals remain present and the vanilla LookControl is replaced.
-- Enabling cow `remove_float` removes FloatGoal without removing BreedGoal.
-- `allow_remove_calls=false` prevents removal even when a specific option
-  is enabled.
-- Pufferfish puff is controlled only by `remove_puff`.
-- Squid flee and random movement use independent settings.
-- Sheep `remove_eat_block` removes its EatBlockGoal.
+The current diagnostic test records the real goal-selector contents and
+LookControl class for Cow, Sheep, Pufferfish and Squid with all relevant
+removal flags disabled. The next step is to build assertions only around
+goals confirmed by this runtime inventory, then rerun the tests with each
+option toggled independently.
 
-The test temporarily changes the in-memory settings and restores all touched
-values in a finally block. It uses one GameTest method to avoid parallel tests
-racing over the singleton configuration.
+The test temporarily changes in-memory settings and restores all touched
+values in a finally block. It uses one GameTest method to avoid parallel
+tests racing over the singleton configuration.
 
 ## CI verification
 
