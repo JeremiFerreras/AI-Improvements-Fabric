@@ -15,6 +15,7 @@ repositories {
 }
 
 loom {
+    accessWidenerPath = file("src/main/resources/aiimprovements.classtweaker")
     mods {
         "aiimprovements" {
             sourceSet sourceSets.main
@@ -28,13 +29,13 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
-def modVersion = project.version.toString()
+def modVersionString = project.version.toString()
+def archiveNameString = project.base.archivesName.get()
 
 tasks.named("processResources", ProcessResources).configure {
-    inputs.property("version", modVersion)
-
+    inputs.property("version", modVersionString)
     filesMatching("fabric.mod.json") {
-        expand "version": modVersion
+        expand "version": modVersionString
     }
 }
 
@@ -55,15 +56,14 @@ tasks.named('jar', Jar).configure {
         attributes([
             "Specification-Title": "AI-Improvements",
             "Specification-Vendor": "Built Broken Modding",
-            "Specification-Version": project.version,
+            "Specification-Version": modVersionString,
             "Implementation-Title": "AI-Improvements Fabric",
-            "Implementation-Version": project.version,
+            "Implementation-Version": modVersionString,
             "Implementation-Vendor": "JeremiFerreras"
         ])
     }
-
     from("LICENSE") {
-        rename { "${it}_${project.base.archivesName.get()}" }
+        rename { fileName -> "${fileName}_${archiveNameString}" }
     }
 }
 
