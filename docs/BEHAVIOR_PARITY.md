@@ -90,22 +90,39 @@ preserved:
 Configuration is read at startup. There is no live reload or in-game config
 screen.
 
-## Deferred GameTest source
+## Automated behavioral verification
 
-The Minecraft 26.3 GameTest source remains under `src/gametest/` as material
-for the later functional-validation phase. The current `buildFabricPort`
-task and GitHub Actions package workflow do not invoke it or launch Minecraft.
-No current code-completion claim in this document relies on a new GameTest run.
+The active GameTest suite runs in the GitHub Actions validation workflow. It
+checks the vanilla goal baselines before removal, every configured goal option
+for cows, chickens, pigs and sheep, fish and squid options, generic look-goal
+filters, allowlist/denylist behavior, and the independence of the pufferfish
+puff/swim and squid flee/random-movement settings.
 
-An earlier CI revision did execute a focused GameTest matrix and reported
-`All 2 required tests passed` in run
-[45050485699](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45050485699).
-That is historical evidence for those listed cases only, not a current test
-run and not proof of full practical stability.
+The LookControl comparison checks 21 immediate target geometries, including
+all yaw quadrants, exact axes, near-zero offsets, vertical targets and a
+zero-offset target. It then compares vanilla and FixedLookControl through
+five changing targets over 40 gradual rotation ticks each, at a limited
+rotation speed. The acceptance tolerance remains 0.75 degrees for yaw and
+pitch.
+
+The production-server smoke runs the packaged JAR with 12 AI-enabled mobs per
+species (84 total) across cows, chickens, pigs, sheep, salmon, squid and
+pufferfish. It now checks horizontal coordinate changes for each species,
+before and after an in-session chunk unload/reload. It also saves the world,
+restarts the dedicated server and verifies all seven populations load from
+disk. The client smoke launches the packaged JAR under Xvfb and checks
+initializer execution, LWJGL/resource initialization, graphics backend
+selection and configuration generation.
+
+The latest completed evidence is CI run
+[45062439870](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45062439870).
+That run predates the new movement/rotation edge assertions in the current
+commit; those will be evaluated by the next CI run.
 
 ## Remaining practical verification
 
-Natural spawning, spawn eggs, chunk reloads, disk-loaded entities,
-third-party AI compatibility, LookControl rotation over time, high-entity
-count performance, normal client startup and long-running dedicated-server
-behavior are intentionally deferred until the maintainer requests testing.
+Interactive player-driven behavior, natural spawning across all mob families,
+third-party AI compatibility, long-duration multiplayer, large-modpack
+interactions, physical GPU rendering and performance under substantially
+higher entity counts remain unverified. CI smoke tests are bounded integration
+checks and must not be presented as proof of universal modpack stability.
