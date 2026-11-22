@@ -2,9 +2,9 @@
 """Production-launcher smoke test for the packaged Fabric mod JAR.
 
 The Fabric server launcher performs a first-run install and writes eula.txt.
-This script accepts that bootstrap phase, enables the EULA in the generated
-server directory, then launches again, summons representative mobs, flushes
-the world and shuts down cleanly.
+This script accepts that bootstrap phase, enables the EULA, launches a real
+server, summons representative mobs, saves and shuts down, then reopens the
+same world to verify the entities can be loaded back from disk.
 """
 
 from __future__ import annotations
@@ -26,13 +26,24 @@ STOP_TIMEOUT_SECONDS = 90
 
 SUMMON_COMMANDS = (
     "forceload add 0 0",
-    "summon minecraft:cow 0 80 0",
-    "summon minecraft:chicken 2 80 0",
-    "summon minecraft:pig 4 80 0",
-    "summon minecraft:sheep 6 80 0",
-    "summon minecraft:salmon 8 80 0",
-    "summon minecraft:squid 10 80 0",
-    "summon minecraft:pufferfish 12 80 0",
+    "fill -1 79 -1 15 82 1 minecraft:water",
+    "summon minecraft:cow 0 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:chicken 2 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:pig 4 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:sheep 6 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:salmon 8 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:squid 10 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    "summon minecraft:pufferfish 12 80 0 {NoAI:1b,PersistenceRequired:1b}",
+)
+
+RELOAD_CHECK_COMMANDS = (
+    ("cow", "execute if entity @e[type=minecraft:cow,limit=1] run say AIIMP_RELOAD_COW"),
+    ("chicken", "execute if entity @e[type=minecraft:chicken,limit=1] run say AIIMP_RELOAD_CHICKEN"),
+    ("pig", "execute if entity @e[type=minecraft:pig,limit=1] run say AIIMP_RELOAD_PIG"),
+    ("sheep", "execute if entity @e[type=minecraft:sheep,limit=1] run say AIIMP_RELOAD_SHEEP"),
+    ("salmon", "execute if entity @e[type=minecraft:salmon,limit=1] run say AIIMP_RELOAD_SALMON"),
+    ("squid", "execute if entity @e[type=minecraft:squid,limit=1] run say AIIMP_RELOAD_SQUID"),
+    ("pufferfish", "execute if entity @e[type=minecraft:pufferfish,limit=1] run say AIIMP_RELOAD_PUFFERFISH"),
 )
 
 
@@ -72,7 +83,9 @@ def pump_lines(stream, output_queue: queue.Queue[str | None]) -> None:
         output_queue.put(None)
 
 
-def run_server_phase(send_commands: bool) -> tuple[int, bool, bool, list[str], str | None]:
+def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]:
+    if mode not in {"bootstrap", "spawn", "reload"}:
+        raise ValueError(f"Unsupported production server phase: {mode}")
     wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
     command = [
         wrapper,
@@ -143,14 +156,24 @@ def run_server_phase(send_commands: bool) -> tuple[int, bool, bool, list[str], s
         lower = line.lower()
         if "done (" in lower and not ready:
             ready = True
-            if send_commands:
+            if mode == "spawn":
                 for summon in SUMMON_COMMANDS:
                     send(summon)
                 send("save-all flush")
                 save_requested = True
                 save_deadline = time.monotonic() + 20
+            elif mode == "reload":
+                send("forceload add 0 0")
+                # Allow the persistent chunk ticket to materialize its entities
+                # before querying the selectors.
+                time.sleep(4)
+                for _, reload_command in RELOAD_CHECK_COMMANDS:
+                    send(reload_command)
+                send("save-all flush")
+                save_requested = True
+                save_deadline = time.monotonic() + 20
 
-        if send_commands and ready and save_requested and not stop_requested:
+        if mode in {"spawn", "reload"} and ready and save_requested and not stop_requested:
             if "saved the game" in lower or "saved the world" in lower:
                 send("stop")
                 stop_requested = True
@@ -187,7 +210,7 @@ def main() -> int:
     # Phase 1: Fabric's executable server launcher installs its files and
     # writes an EULA file before refusing to start the actual game server.
     bootstrap_code, bootstrap_ready, _, bootstrap_lines, bootstrap_failure = run_server_phase(
-        send_commands=False
+        mode="bootstrap"
     )
     combined_lines = list(bootstrap_lines)
     bootstrap_log = "".join(bootstrap_lines)
@@ -215,7 +238,7 @@ def main() -> int:
 
     # Phase 2: run the real server after its first-run setup and EULA gate.
     server_code, ready, stop_requested, server_lines, failure = run_server_phase(
-        send_commands=True
+        mode="spawn"
     )
     combined_lines.extend(server_lines)
     combined_log = "".join(combined_lines)
@@ -236,6 +259,28 @@ def main() -> int:
         print("FAIL: server did not confirm a clean save/stop sequence", file=sys.stderr)
         return 1
 
+    # Phase 3: reopen the exact world directory with the packaged distribution
+    # JAR and ask the server to find each entity loaded from the saved chunk.
+    reload_code, reload_ready, reload_stopped, reload_lines, reload_failure = run_server_phase(
+        mode="reload"
+    )
+    combined_lines.extend(reload_lines)
+    combined_log = "".join(combined_lines)
+    LOG_FILE.write_text(combined_log, encoding="utf-8")
+
+    if reload_failure:
+        print(f"FAIL: disk-reload phase failed: {reload_failure}", file=sys.stderr)
+        return 1
+    if reload_code != 0 or not reload_ready or not reload_stopped:
+        print("FAIL: second production server session did not start, save and stop cleanly", file=sys.stderr)
+        return 1
+
+    for entity_name, _ in RELOAD_CHECK_COMMANDS:
+        marker = f"AIIMP_RELOAD_{entity_name.upper()}"
+        if marker.lower() not in combined_log.lower():
+            print(f"FAIL: {entity_name} was not found after reopening the saved world", file=sys.stderr)
+            return 1
+
     required_markers = (
         "AI Improvements Fabric 26.3 experimental port initialized",
         "Summoned new Cow",
@@ -246,6 +291,13 @@ def main() -> int:
         "Summoned new Squid",
         "Summoned new Pufferfish",
         "Saved the game",
+        "AIIMP_RELOAD_COW",
+        "AIIMP_RELOAD_CHICKEN",
+        "AIIMP_RELOAD_PIG",
+        "AIIMP_RELOAD_SHEEP",
+        "AIIMP_RELOAD_SALMON",
+        "AIIMP_RELOAD_SQUID",
+        "AIIMP_RELOAD_PUFFERFISH",
     )
     for marker in required_markers:
         if marker.lower() not in combined_log.lower():
@@ -294,6 +346,8 @@ def main() -> int:
     print("PASS: seven representative mob entity types were summoned")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
+    print("PASS: second production server startup reopened the saved world")
+    print("PASS: all seven entity types were found after disk reload")
     return 0
 
 
