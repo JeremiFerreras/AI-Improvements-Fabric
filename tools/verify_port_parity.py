@@ -271,6 +271,10 @@ def check_fabric_metadata() -> None:
     for marker in (
         "MOB_GROUPS",
         "AI_TICK_WINDOW_SECONDS = 60",
+        "POST_CHUNK_RELOAD_AI_TICK_SECONDS = 30",
+        "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED",
+        "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_COMPLETE",
+        "AIIMP_POST_CHUNK_RELOAD_{name.upper()}_COUNT_OK",
         "CHUNK_UNLOAD_WAIT_SECONDS = 12",
         "CHUNK_RELOAD_WAIT_SECONDS = 5",
         "COMMAND_PACING_SECONDS = 0.05",
