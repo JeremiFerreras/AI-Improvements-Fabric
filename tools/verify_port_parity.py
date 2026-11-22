@@ -171,7 +171,8 @@ def check_configuration_coverage() -> None:
         "remove_float", "remove_panic", "remove_breed",
         "remove_tempt", "remove_follow_parent", "remove_stroll",
     ):
-        require(f'"{suffix}"' in config, f"Animal setting missing: {suffix}")
+        require(f'path + ".{suffix}"' in config,
+                f"Animal config path builder missing: {suffix}")
     require("bool(false), bool(false), bool(false)" in config,
             "Animal option defaults no longer initialize to false")
 
