@@ -36,7 +36,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Validate Class Tweaker and build
+      - name: Validate Class Tweaker, run GameTests and build
         run: ./gradlew --no-daemon validateAccessWidener build
 
       - name: Verify remapped JAR
@@ -45,6 +45,17 @@ jobs:
           JAR="$(find build/libs -maxdepth 1 -type f -name '*-unstable.jar' ! -name '*sources*' | head -n 1)"
           test -n "$JAR"
           python tools/verify_port_parity.py --jar "$JAR"
+
+      - name: Store reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-improvements-fabric-26.3-failure-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload experimental JARs
         uses: actions/upload-artifact@v4

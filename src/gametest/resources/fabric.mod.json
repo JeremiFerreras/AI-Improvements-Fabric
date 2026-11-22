@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "aiimprovements-test",
+  "version": "0.4.0-unstable",
+  "name": "AI Improvements Fabric Game Tests",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.builtbroken.ai.improvements.gametest.AIImprovementsGameTests"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "26.3",
+    "aiimprovements": "*"
+  }
+}

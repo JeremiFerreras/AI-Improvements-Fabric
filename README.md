@@ -1,7 +1,7 @@
 # AI Improvements — Fabric 26.3
 
-> **Experimental / unstable port.** This branch has a source-level parity
-> check and a compiled Fabric JAR, but it is not yet a stable release.
+> **Experimental / unstable port.** Source parity checks and server-side
+> Minecraft GameTests run in CI. This is not yet a stable release.
 
 This branch ports the NeoForge 26.3 implementation to Fabric 26.3. The
 Minecraft version is intentionally unchanged.
@@ -16,19 +16,22 @@ Minecraft version is intentionally unchanged.
 - Cached `FastTrig` math and `FixedLookControl` replacement.
 - Fabric Class Tweaker entries for the vanilla fields/classes exposed by the
   NeoForge Access Transformer.
+- Server GameTests that spawn mobs and inspect their resulting goal selectors.
 - Original NeoForge Java sources and metadata retained under
   `src/legacy-neoforge/`.
 
-## Parity and known limitations
+## Parity and current limitations
 
-- The exact event insertion point has been compared in Fabric API and NeoForge
-  26.3 sources.
-- A source-level parity script checks registered goal rules, defaults, access
-  widening, FastTrig identity and safe deferred goal removal.
-- Two mismatched upstream configuration references are corrected for
-  pufferfish puff and squid flee; see [behavior parity](docs/BEHAVIOR_PARITY.md).
-- No in-game regression suite has yet proved identical behavior for every
-  vanilla or third-party mob.
+- The NeoForge and Fabric entity-manager callbacks run at the same
+  pre-insertion point.
+- Static checks verify goal mappings, defaults, Class Tweaker entries and
+  the built JAR.
+- Server GameTests exercise cow, pufferfish, squid and sheep goal-removal
+  behavior, including isolation of similarly named settings.
+- Two incorrect upstream option connections are corrected for pufferfish puff
+  and squid flee; see [behavior parity](docs/BEHAVIOR_PARITY.md).
+- Third-party mob compatibility, natural spawning, disk reloads, high-count
+  performance and client startup still need manual regression checks.
 - The JSON configuration is read at startup; there is no GUI or live reload.
 - Goal replacement remains unsupported, matching the upstream TODO.
 
@@ -54,10 +57,11 @@ gradlew.bat validateAccessWidener build
 Linux/macOS:
 
 ```bash
-./gradlew verifyPortParity validateAccessWidener build
+./gradlew validateAccessWidener build
 ```
 
-The remapped mod JAR is produced under `build/libs/`.
+The server GameTests are executed automatically by Fabric Loom during
+`build`. The remapped mod JAR is produced under `build/libs/`.
 
 ## Porting documents
 
