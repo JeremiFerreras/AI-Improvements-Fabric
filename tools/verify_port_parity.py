@@ -261,10 +261,10 @@ def check_fabric_metadata() -> None:
             "Fabric package task must validate and remap without invoking GameTests")
 
     workflow = read(ROOT / ".github/workflows/build.yml")
-    require("./gradlew --no-daemon buildFabricPort" in workflow,
-            "GitHub Actions must use the dedicated package task")
-    require("runGameTest" not in workflow,
-            "Current package workflow must not invoke GameTests")
+    require("./gradlew --no-daemon validateAccessWidener build" in workflow,
+            "GitHub Actions must compile, execute the configured GameTests and build the mod")
+    require("execute GameTests" in workflow,
+            "GitHub Actions validation step must explicitly declare GameTests")
     require(not (ROOT / "src/tools").exists(),
             "Pre-26.3 utility code must remain outside the active src tree")
 
