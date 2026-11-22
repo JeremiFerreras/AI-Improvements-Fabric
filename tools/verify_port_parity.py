@@ -195,6 +195,18 @@ def check_runtime_wiring() -> None:
     require("if (oldHelper != null)" in read(FABRIC / "modifier/ModifierSystem.java"),
             "FixedLookControl state copy must guard a null old controller")
 
+    game_tests = read(ROOT / "src/gametest/java/com/builtbroken/ai/improvements/gametest/AIImprovementsGameTests.java")
+    for marker in (
+        "Controller replacement must copy the pending look target",
+        "Controller replacement must copy lookAtCooldown",
+        "Controller replacement must copy both rotation limits",
+        "A custom LookControl subclass must not be replaced",
+        "A null original controller must be replaced without dereferencing it",
+        "ModifierSystem.editor.handle",
+    ):
+        require(marker in game_tests,
+                f"LookControl regression coverage missing: {marker}")
+
     initializer = read(FABRIC / "AIImprovementsFabric.java")
     require("FastTrig.init()" in initializer, "FastTrig cache is not initialized")
     require("ConfigMain.load()" in initializer, "Fabric configuration is not loaded at startup")

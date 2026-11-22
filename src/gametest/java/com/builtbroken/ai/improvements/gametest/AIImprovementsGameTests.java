@@ -6,6 +6,7 @@ import java.util.List;
 import com.builtbroken.ai.improvements.ConfigMain;
 import com.builtbroken.ai.improvements.ConfigMain.AnimalConfigSection;
 import com.builtbroken.ai.improvements.FixedLookControl;
+import com.builtbroken.ai.improvements.modifier.ModifierSystem;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -221,6 +222,59 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             helper.assertTrue(allowlistedSheep.getLookControl() instanceof FixedLookControl,
                     "Sheep in the LookControl allowlist must receive FixedLookControl");
             helper.discard(allowlistedSheep);
+
+            // The optimized controller must inherit a pending target, cooldown
+            // and rotation limits from the vanilla controller it replaces.
+            config.replaceLookController.filterList().set(List.of("minecraft:sheep"));
+            Mob stateCopyCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            LookControl originalController = stateCopyCow.getLookControl();
+            originalController.setLookAt(
+                    stateCopyCow.getX() + 3.0,
+                    stateCopyCow.getY() + stateCopyCow.getEyeHeight() + 2.0,
+                    stateCopyCow.getZ() - 4.0,
+                    7.0F,
+                    13.0F);
+            originalController.lookAtCooldown = 4;
+            double expectedWantedX = originalController.getWantedX();
+            double expectedWantedY = originalController.getWantedY();
+            double expectedWantedZ = originalController.getWantedZ();
+            int expectedCooldown = originalController.lookAtCooldown;
+            float expectedXLimit = originalController.xMaxRotAngle;
+            float expectedYLimit = originalController.yMaxRotSpeed;
+
+            config.replaceLookController.filterList().set(List.of("minecraft:cow"));
+            ModifierSystem.editor.handle(stateCopyCow);
+            helper.assertTrue(stateCopyCow.getLookControl() instanceof FixedLookControl,
+                    "Reprocessing a vanilla controller must install FixedLookControl");
+            LookControl copiedController = stateCopyCow.getLookControl();
+            helper.assertTrue(copiedController.getWantedX() == expectedWantedX
+                            && copiedController.getWantedY() == expectedWantedY
+                            && copiedController.getWantedZ() == expectedWantedZ,
+                    "Controller replacement must copy the pending look target");
+            helper.assertTrue(copiedController.lookAtCooldown == expectedCooldown,
+                    "Controller replacement must copy lookAtCooldown");
+            helper.assertTrue(copiedController.xMaxRotAngle == expectedXLimit
+                            && copiedController.yMaxRotSpeed == expectedYLimit,
+                    "Controller replacement must copy both rotation limits");
+            helper.discard(stateCopyCow);
+
+            // A non-vanilla LookControl subclass may belong to another mod;
+            // the optimization must not overwrite that controller instance.
+            Mob customControllerCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            LookControl customController = new LookControl(customControllerCow) { };
+            customControllerCow.lookControl = customController;
+            ModifierSystem.editor.handle(customControllerCow);
+            helper.assertTrue(customControllerCow.getLookControl() == customController,
+                    "A custom LookControl subclass must not be replaced");
+            helper.discard(customControllerCow);
+
+            // The null-controller recovery path must not dereference the old value.
+            Mob nullControllerCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            nullControllerCow.lookControl = null;
+            ModifierSystem.editor.handle(nullControllerCow);
+            helper.assertTrue(nullControllerCow.getLookControl() instanceof FixedLookControl,
+                    "A null original controller must be replaced without dereferencing it");
+            helper.discard(nullControllerCow);
 
             // Compare the actual yaw/pitch output of the optimized controller
             // with vanilla at several horizontal and vertical target angles.
