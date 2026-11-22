@@ -26,24 +26,27 @@ STOP_TIMEOUT_SECONDS = 90
 
 SUMMON_COMMANDS = (
     "forceload add 0 0",
-    "fill -1 79 -1 15 82 1 minecraft:water",
-    "summon minecraft:cow 0 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:chicken 2 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:pig 4 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:sheep 6 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:salmon 8 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:squid 10 80 0 {NoAI:1b,PersistenceRequired:1b}",
-    "summon minecraft:pufferfish 12 80 0 {NoAI:1b,PersistenceRequired:1b}",
+    # Land mobs stand on a dry stone platform. Aquatic mobs are kept in a
+    # separate pool so NoAI cannot cause land entities to drown or fish to suffocate.
+    "fill -1 79 -1 7 79 1 minecraft:stone",
+    "fill 8 79 -1 14 82 1 minecraft:water",
+    'summon minecraft:cow 0 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_COW"]}',
+    'summon minecraft:chicken 2 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_CHICKEN"]}',
+    'summon minecraft:pig 4 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_PIG"]}',
+    'summon minecraft:sheep 6 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SHEEP"]}',
+    'summon minecraft:salmon 8 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SALMON"]}',
+    'summon minecraft:squid 10 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_SQUID"]}',
+    'summon minecraft:pufferfish 12 80 0 {NoAI:1b,PersistenceRequired:1b,Tags:["AIIMP_PERSIST_PUFFERFISH"]}',
 )
 
 RELOAD_CHECK_COMMANDS = (
-    ("cow", "execute if entity @e[type=minecraft:cow,limit=1] run say AIIMP_RELOAD_COW"),
-    ("chicken", "execute if entity @e[type=minecraft:chicken,limit=1] run say AIIMP_RELOAD_CHICKEN"),
-    ("pig", "execute if entity @e[type=minecraft:pig,limit=1] run say AIIMP_RELOAD_PIG"),
-    ("sheep", "execute if entity @e[type=minecraft:sheep,limit=1] run say AIIMP_RELOAD_SHEEP"),
-    ("salmon", "execute if entity @e[type=minecraft:salmon,limit=1] run say AIIMP_RELOAD_SALMON"),
-    ("squid", "execute if entity @e[type=minecraft:squid,limit=1] run say AIIMP_RELOAD_SQUID"),
-    ("pufferfish", "execute if entity @e[type=minecraft:pufferfish,limit=1] run say AIIMP_RELOAD_PUFFERFISH"),
+    ("cow", "execute if entity @e[type=minecraft:cow,tag=AIIMP_PERSIST_COW,limit=1] run say AIIMP_RELOAD_COW"),
+    ("chicken", "execute if entity @e[type=minecraft:chicken,tag=AIIMP_PERSIST_CHICKEN,limit=1] run say AIIMP_RELOAD_CHICKEN"),
+    ("pig", "execute if entity @e[type=minecraft:pig,tag=AIIMP_PERSIST_PIG,limit=1] run say AIIMP_RELOAD_PIG"),
+    ("sheep", "execute if entity @e[type=minecraft:sheep,tag=AIIMP_PERSIST_SHEEP,limit=1] run say AIIMP_RELOAD_SHEEP"),
+    ("salmon", "execute if entity @e[type=minecraft:salmon,tag=AIIMP_PERSIST_SALMON,limit=1] run say AIIMP_RELOAD_SALMON"),
+    ("squid", "execute if entity @e[type=minecraft:squid,tag=AIIMP_PERSIST_SQUID,limit=1] run say AIIMP_RELOAD_SQUID"),
+    ("pufferfish", "execute if entity @e[type=minecraft:pufferfish,tag=AIIMP_PERSIST_PUFFERFISH,limit=1] run say AIIMP_RELOAD_PUFFERFISH"),
 )
 
 

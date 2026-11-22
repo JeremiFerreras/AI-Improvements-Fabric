@@ -288,6 +288,22 @@ def check_fabric_metadata() -> None:
         "AIIMP_RELOAD_PUFFERFISH",
         "mode=\"reload\"",
         "PersistenceRequired:1b",
+        "minecraft:stone",
+        "fill 8 79 -1 14 82 1 minecraft:water",
+        "AIIMP_PERSIST_COW",
+        "AIIMP_PERSIST_CHICKEN",
+        "AIIMP_PERSIST_PIG",
+        "AIIMP_PERSIST_SHEEP",
+        "AIIMP_PERSIST_SALMON",
+        "AIIMP_PERSIST_SQUID",
+        "AIIMP_PERSIST_PUFFERFISH",
+        "tag=AIIMP_PERSIST_COW",
+        "tag=AIIMP_PERSIST_CHICKEN",
+        "tag=AIIMP_PERSIST_PIG",
+        "tag=AIIMP_PERSIST_SHEEP",
+        "tag=AIIMP_PERSIST_SALMON",
+        "tag=AIIMP_PERSIST_SQUID",
+        "tag=AIIMP_PERSIST_PUFFERFISH",
     ):
         require(marker in smoke, f"Production server smoke coverage missing: {marker}")
 
