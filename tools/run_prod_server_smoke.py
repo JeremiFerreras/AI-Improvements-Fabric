@@ -26,6 +26,7 @@ START_TIMEOUT_SECONDS = 240
 STOP_TIMEOUT_SECONDS = 90
 
 AI_TICK_WINDOW_SECONDS = 60
+POST_CHUNK_RELOAD_AI_TICK_SECONDS = 30
 CHUNK_UNLOAD_WAIT_SECONDS = 12
 CHUNK_RELOAD_WAIT_SECONDS = 5
 COMMAND_PACING_SECONDS = 0.05
@@ -205,6 +206,7 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
     ai_tick_deadline: float | None = None
     chunk_unload_deadline: float | None = None
     chunk_reload_deadline: float | None = None
+    post_chunk_reload_ai_deadline: float | None = None
     failure: str | None = None
 
     def send(command_text: str) -> None:
@@ -242,10 +244,19 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if chunk_reload_deadline is not None and now >= chunk_reload_deadline and not save_requested:
             for count_command in population_check_commands("CHUNK_RELOAD"):
                 send(count_command)
+            send("say AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED")
+            post_chunk_reload_ai_deadline = time.monotonic() + POST_CHUNK_RELOAD_AI_TICK_SECONDS
+            chunk_reload_deadline = None
+
+        if (post_chunk_reload_ai_deadline is not None
+                and now >= post_chunk_reload_ai_deadline and not save_requested):
+            send("say AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_COMPLETE")
+            for count_command in population_check_commands("POST_CHUNK_RELOAD"):
+                send(count_command)
             send("save-all flush")
             save_requested = True
             save_deadline = time.monotonic() + 20
-            chunk_reload_deadline = None
+            post_chunk_reload_ai_deadline = None
 
         if save_deadline is not None and now > save_deadline and not stop_requested:
             send("stop")
@@ -422,6 +433,8 @@ def main() -> int:
         "AIIMP_CHUNK_UNLOAD_REQUESTED",
         "AIIMP_CHUNK_UNLOAD_CHECK_COMPLETE",
         "AIIMP_CHUNK_RELOAD_REQUESTED",
+        "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED",
+        "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_COMPLETE",
         "Saved the game",
     ) + tuple(
         f"AIIMP_ACTIVE_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
@@ -429,6 +442,8 @@ def main() -> int:
         f"AIIMP_UNLOADED_{name.upper()}_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
         f"AIIMP_CHUNK_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
+        f"AIIMP_POST_CHUNK_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
         f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     )
@@ -481,6 +496,7 @@ def main() -> int:
     print(f"PASS: all seven entity populations survived {AI_TICK_WINDOW_SECONDS}s of normal AI ticking")
     print("PASS: all seven remote entity chunks unloaded after force-load tickets were removed")
     print("PASS: all seven entity populations survived an in-session chunk reload")
+    print(f"PASS: all seven entity populations survived another {POST_CHUNK_RELOAD_AI_TICK_SECONDS}s of AI after chunk reload")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
     print("PASS: second production server startup reopened the saved world")
