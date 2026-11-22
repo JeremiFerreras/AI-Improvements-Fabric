@@ -129,19 +129,22 @@ def movement_snapshot_commands() -> tuple[str, ...]:
 
 
 def post_reload_stimulus_commands() -> tuple[str, ...]:
-    """Trigger the normal PanicGoal on farm animals after their chunks reload.
+    """Activate vanilla PanicGoal using a real panic-causing damage source.
 
-    Random strolling is intentionally probabilistic and can leave a healthy
-    group stationary during a short sample. On-fire is a normal PanicGoal
-    trigger; Invulnerable prevents the diagnostic stimulus from killing mobs.
+    Minecraft 26.3 PanicGoal.shouldPanic() checks that the mob's last damage
+    source belongs to DamageTypeTags.PANIC_CAUSES; being on fire by itself is
+    not sufficient. Apply a tiny in-fire hit first, then make the mob
+    invulnerable and keep its fire state active for the observation window.
     """
-    return tuple(
-        f"execute as @e[type={entity_type},tag={tag}] "
-        # Fire is measured in ticks: 1,200 keeps PanicGoal's normal
-        # on-fire trigger active throughout the 30-second observation window.
-        "run data merge entity @s {Fire:1200s,Invulnerable:1b}"
-        for _, entity_type, tag, _ in MOB_GROUPS[:4]
-    )
+    commands = []
+    for _, entity_type, tag, _ in MOB_GROUPS[:4]:
+        selector = f"@e[type={entity_type},tag={tag}]"
+        commands.extend((
+            f"execute as {selector} run damage @s 0.1 minecraft:in_fire",
+            f"execute as {selector} run data merge entity @s "
+            "{Fire:1200s,Invulnerable:1b}",
+        ))
+    return tuple(commands)
 
 
 def movement_check_commands(prefix: str) -> tuple[str, ...]:
