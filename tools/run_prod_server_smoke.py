@@ -137,7 +137,9 @@ def post_reload_stimulus_commands() -> tuple[str, ...]:
     """
     return tuple(
         f"execute as @e[type={entity_type},tag={tag}] "
-        "run data merge entity @s {Fire:100s,Invulnerable:1b}"
+        # Fire is measured in ticks: 1,200 keeps PanicGoal's normal
+        # on-fire trigger active throughout the 30-second observation window.
+        "run data merge entity @s {Fire:1200s,Invulnerable:1b}"
         for _, entity_type, tag, _ in MOB_GROUPS[:4]
     )
 
