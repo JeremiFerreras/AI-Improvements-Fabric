@@ -222,6 +222,20 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                     "Sheep in the LookControl allowlist must receive FixedLookControl");
             helper.discard(allowlistedSheep);
 
+            // Compare the actual yaw/pitch output of the optimized controller
+            // with vanilla at several horizontal and vertical target angles.
+            config.replaceLookController.filterList().set(List.of("minecraft:sheep"));
+            Mob vanillaRotationCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            config.replaceLookController.filterList().set(List.of("minecraft:cow"));
+            Mob fixedRotationCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            helper.assertTrue(vanillaRotationCow.getLookControl().getClass() == LookControl.class,
+                    "Rotation reference cow must retain vanilla LookControl");
+            helper.assertTrue(fixedRotationCow.getLookControl() instanceof FixedLookControl,
+                    "Rotation comparison cow must use FixedLookControl");
+            verifyLookControllerParity(helper, vanillaRotationCow, fixedRotationCow);
+            helper.discard(vanillaRotationCow);
+            helper.discard(fixedRotationCow);
+
             // Cover all six options for all four farm-animal config sections.
             // Every case confirms the goal exists before checking its removal.
             verifyAnimalOptions(helper, EntityTypes.COW, config.cow, "Cow");
@@ -334,6 +348,64 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
         }
 
         helper.succeed();
+    }
+
+    private static void verifyLookControllerParity(
+            GameTestHelper helper, Mob vanillaMob, Mob fixedMob) {
+        double[][] targetOffsets = {
+                {0.0, 0.0, 8.0},
+                {4.0, 0.0, 8.0},
+                {-4.0, 0.0, 8.0},
+                {4.0, 3.0, 8.0},
+                {-4.0, -3.0, 8.0},
+                {0.0, 5.0, 8.0},
+                {0.0, -5.0, 8.0},
+                {1.0, 2.0, 12.0},
+                {-1.0, -2.0, 12.0}
+        };
+
+        for (int i = 0; i < targetOffsets.length; i++) {
+            double dx = targetOffsets[i][0];
+            double dy = targetOffsets[i][1];
+            double dz = targetOffsets[i][2];
+
+            vanillaMob.getLookControl().setLookAt(
+                    vanillaMob.getX() + dx,
+                    vanillaMob.getY() + vanillaMob.getEyeHeight() + dy,
+                    vanillaMob.getZ() + dz,
+                    180.0F,
+                    180.0F);
+            fixedMob.getLookControl().setLookAt(
+                    fixedMob.getX() + dx,
+                    fixedMob.getY() + fixedMob.getEyeHeight() + dy,
+                    fixedMob.getZ() + dz,
+                    180.0F,
+                    180.0F);
+
+            vanillaMob.getLookControl().tick();
+            fixedMob.getLookControl().tick();
+
+            float yawError = wrappedAngleDifference(
+                    vanillaMob.getYHeadRot(), fixedMob.getYHeadRot());
+            float pitchError = Math.abs(vanillaMob.getXRot() - fixedMob.getXRot());
+
+            helper.assertTrue(yawError <= 0.75F,
+                    "FixedLookControl yaw differs from vanilla at target sample " + i
+                            + " by " + yawError + " degrees");
+            helper.assertTrue(pitchError <= 0.75F,
+                    "FixedLookControl pitch differs from vanilla at target sample " + i
+                            + " by " + pitchError + " degrees");
+        }
+    }
+
+    private static float wrappedAngleDifference(float left, float right) {
+        float difference = (left - right) % 360.0F;
+        if (difference > 180.0F) {
+            difference -= 360.0F;
+        } else if (difference < -180.0F) {
+            difference += 360.0F;
+        }
+        return Math.abs(difference);
     }
 
     private static void disableAnimalOptions(AnimalConfigSection section) {
