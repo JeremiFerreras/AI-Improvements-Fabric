@@ -273,32 +273,24 @@ def check_fabric_metadata() -> None:
         "AI_TICK_WINDOW_SECONDS = 20",
         "EXPECTED_MOBS_PER_TYPE = 12",
         "population_check_commands",
+        'f"AIIMP_{prefix}_{name.upper()}_COUNT_OK"',
         "AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED",
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
-        "AIIMP_RELOAD_COW_COUNT_OK",
-        "AIIMP_RELOAD_CHICKEN_COUNT_OK",
-        "AIIMP_RELOAD_PIG_COUNT_OK",
-        "AIIMP_RELOAD_SHEEP_COUNT_OK",
-        "AIIMP_RELOAD_SALMON_COUNT_OK",
-        "AIIMP_RELOAD_SQUID_COUNT_OK",
-        "AIIMP_RELOAD_PUFFERFISH_COUNT_OK",
         "mode=\"reload\"",
         "PersistenceRequired:1b",
         "minecraft:stone",
         "minecraft:glass",
         "fill 17 80 1 30 82 14 minecraft:water",
-        "AIIMP_PERSIST_COW",
-        "AIIMP_PERSIST_CHICKEN",
-        "AIIMP_PERSIST_PIG",
-        "AIIMP_PERSIST_SHEEP",
-        "AIIMP_PERSIST_SALMON",
-        "AIIMP_PERSIST_SQUID",
-        "AIIMP_PERSIST_PUFFERFISH",
         "forceload add 1 0",
     ):
         require(marker in smoke, f"Production server smoke coverage missing: {marker}")
     require("NoAI:1b" not in smoke,
             "Production server mobs must run their normal AI goals during the tick window")
+    for entity_name in ("cow", "chicken", "pig", "sheep", "salmon", "squid", "pufferfish"):
+        require(f'"{entity_name}", "minecraft:{entity_name}"' in smoke,
+                f"Production server population is missing {entity_name}")
+        require(f"AIIMP_PERSIST_{entity_name.upper()}" in smoke,
+                f"Production server persistence tag is missing {entity_name}")
 
 
     client_build = read(ROOT / "build.gradle")
