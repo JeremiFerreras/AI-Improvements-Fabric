@@ -34,7 +34,14 @@ EXPECTED_MOBS_PER_TYPE = 12
 
 # Each species gets its own fully enclosed 16x16 room and force-loaded chunk.
 # This keeps terrestrial groups apart and avoids accidental entity cramming.
-SUMMON_COMMANDS = ("scoreboard objectives add AIIMP_COUNT dummy",)
+SCOREBOARD_COMMANDS = (
+    "scoreboard objectives add AIIMP_COUNT dummy",
+    "scoreboard objectives add AIIMP_X0 dummy",
+    "scoreboard objectives add AIIMP_Z0 dummy",
+    "scoreboard objectives add AIIMP_X1 dummy",
+    "scoreboard objectives add AIIMP_Z1 dummy",
+    "scoreboard objectives add AIIMP_MOVED dummy",
+)
 
 def mob_grid(x_start: int, z_start: int, y: int) -> tuple[tuple[int, int, int], ...]:
     return tuple(
@@ -72,7 +79,7 @@ def pen_setup_commands() -> tuple[str, ...]:
             commands.append(
                 f"fill {chunk_x + 1} 80 1 {chunk_x + 14} 82 14 minecraft:water"
             )
-    commands.extend(SUMMON_COMMANDS)
+    commands.extend(SCOREBOARD_COMMANDS)
     return tuple(commands)
 
 
@@ -104,6 +111,41 @@ def population_check_commands(prefix: str) -> tuple[str, ...]:
             f"run scoreboard players add {fake_player} AIIMP_COUNT 1",
             f"execute if score {fake_player} AIIMP_COUNT "
             f"matches {EXPECTED_MOBS_PER_TYPE}.. run say AIIMP_{prefix}_{name.upper()}_COUNT_OK",
+        ))
+    return tuple(commands)
+
+
+def movement_snapshot_commands() -> tuple[str, ...]:
+    """Capture each mob's starting X/Z coordinates in entity scoreboard values."""
+    commands = []
+    for _, entity_type, tag, _ in MOB_GROUPS:
+        commands.extend((
+            f"execute as @e[type={entity_type},tag={tag}] "
+            "store result score @s AIIMP_X0 run data get entity @s Pos[0] 1000",
+            f"execute as @e[type={entity_type},tag={tag}] "
+            "store result score @s AIIMP_Z0 run data get entity @s Pos[2] 1000",
+        ))
+    return tuple(commands)
+
+
+def movement_check_commands(prefix: str) -> tuple[str, ...]:
+    """Require at least one real horizontal position change in every species group."""
+    commands = []
+    for name, entity_type, tag, _ in MOB_GROUPS:
+        fake_player = f"#{name}"
+        selector = f"@e[type={entity_type},tag={tag}]"
+        commands.extend((
+            f"scoreboard players set {fake_player} AIIMP_MOVED 0",
+            f"execute as {selector} store result score @s AIIMP_X1 "
+            "run data get entity @s Pos[0] 1000",
+            f"execute as {selector} store result score @s AIIMP_Z1 "
+            "run data get entity @s Pos[2] 1000",
+            f"execute as {selector} unless score @s AIIMP_X0 = @s AIIMP_X1 "
+            f"run scoreboard players add {fake_player} AIIMP_MOVED 1",
+            f"execute as {selector} unless score @s AIIMP_Z0 = @s AIIMP_Z1 "
+            f"run scoreboard players add {fake_player} AIIMP_MOVED 1",
+            f"execute if score {fake_player} AIIMP_MOVED matches 1.. "
+            f"run say AIIMP_{prefix}_{name.upper()}_MOVEMENT_OK",
         ))
     return tuple(commands)
 
@@ -224,6 +266,8 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
             send("say AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE")
             for count_command in population_check_commands("ACTIVE"):
                 send(count_command)
+            for movement_command in movement_check_commands("ACTIVE"):
+                send(movement_command)
             send("forceload remove all")
             send("say AIIMP_CHUNK_UNLOAD_REQUESTED")
             chunk_unload_deadline = time.monotonic() + CHUNK_UNLOAD_WAIT_SECONDS
@@ -244,6 +288,8 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if chunk_reload_deadline is not None and now >= chunk_reload_deadline and not save_requested:
             for count_command in population_check_commands("CHUNK_RELOAD"):
                 send(count_command)
+            for movement_command in movement_snapshot_commands():
+                send(movement_command)
             send("say AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED")
             post_chunk_reload_ai_deadline = time.monotonic() + POST_CHUNK_RELOAD_AI_TICK_SECONDS
             chunk_reload_deadline = None
@@ -253,6 +299,8 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
             send("say AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_COMPLETE")
             for count_command in population_check_commands("POST_CHUNK_RELOAD"):
                 send(count_command)
+            for movement_command in movement_check_commands("POST_CHUNK_RELOAD"):
+                send(movement_command)
             send("save-all flush")
             save_requested = True
             save_deadline = time.monotonic() + 20
@@ -290,6 +338,9 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
                     time.sleep(COMMAND_PACING_SECONDS)
                 for command_text in summon_commands():
                     send(command_text)
+                    time.sleep(COMMAND_PACING_SECONDS)
+                for movement_command in movement_snapshot_commands():
+                    send(movement_command)
                     time.sleep(COMMAND_PACING_SECONDS)
                 send("say AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED")
                 # Keep the actual dedicated server alive while all 84 mobs
@@ -445,6 +496,10 @@ def main() -> int:
     ) + tuple(
         f"AIIMP_POST_CHUNK_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
+        f"AIIMP_ACTIVE_{name.upper()}_MOVEMENT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
+        f"AIIMP_POST_CHUNK_RELOAD_{name.upper()}_MOVEMENT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
         f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     )
     for marker in required_markers:
@@ -497,6 +552,8 @@ def main() -> int:
     print("PASS: all seven remote entity chunks unloaded after force-load tickets were removed")
     print("PASS: all seven entity populations survived an in-session chunk reload")
     print(f"PASS: all seven entity populations survived another {POST_CHUNK_RELOAD_AI_TICK_SECONDS}s of AI after chunk reload")
+    print("PASS: every species showed real horizontal movement during its AI tick window")
+    print("PASS: every species resumed horizontal movement after in-session chunk reload")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
     print("PASS: second production server startup reopened the saved world")
