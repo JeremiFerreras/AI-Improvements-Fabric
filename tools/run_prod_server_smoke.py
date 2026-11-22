@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Production-launcher smoke test for the packaged Fabric mod JAR.
 
-Starts a real Fabric dedicated-server distribution, waits for the world to be
-ready, summons representative mobs through the server console, flushes world
-saves and shuts the server down cleanly. This is not a substitute for a client
-session or a long-duration modpack compatibility test.
+The Fabric server launcher performs a first-run install and writes eula.txt.
+This script accepts that bootstrap phase, enables the EULA in the generated
+server directory, then launches again, summons representative mobs, flushes
+the world and shuts down cleanly.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ START_TIMEOUT_SECONDS = 240
 STOP_TIMEOUT_SECONDS = 90
 
 SUMMON_COMMANDS = (
+    "forceload add 0 0",
     "summon minecraft:cow 0 80 0",
     "summon minecraft:chicken 2 80 0",
     "summon minecraft:pig 4 80 0",
@@ -35,9 +36,12 @@ SUMMON_COMMANDS = (
 )
 
 
-def write_server_files() -> None:
+def prepare_run_directory() -> None:
     RUN_DIR.mkdir(parents=True, exist_ok=True)
-    (RUN_DIR / "eula.txt").write_text("eula=true\n", encoding="utf-8")
+
+
+def write_server_files(eula_path: Path) -> None:
+    eula_path.write_text("eula=true\n", encoding="utf-8")
     properties = {
         "motd": "AI Improvements Fabric production smoke",
         "server-ip": "127.0.0.1",
@@ -68,9 +72,7 @@ def pump_lines(stream, output_queue: queue.Queue[str | None]) -> None:
         output_queue.put(None)
 
 
-def main() -> int:
-    write_server_files()
-
+def run_server_phase(send_commands: bool) -> tuple[int, bool, bool, list[str], str | None]:
     wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
     command = [
         wrapper,
@@ -91,13 +93,13 @@ def main() -> int:
         bufsize=1,
     )
 
-    lines: list[str] = []
     output_queue: queue.Queue[str | None] = queue.Queue()
     reader = threading.Thread(
         target=pump_lines, args=(process.stdout, output_queue), daemon=True
     )
     reader.start()
 
+    lines: list[str] = []
     started_at = time.monotonic()
     ready = False
     save_requested = False
@@ -118,7 +120,6 @@ def main() -> int:
             failure = f"Server did not become ready within {START_TIMEOUT_SECONDS}s"
             break
         if save_deadline is not None and now > save_deadline and not stop_requested:
-            # A stop still triggers a final synchronous world save.
             send("stop")
             stop_requested = True
         if ready and now - started_at > START_TIMEOUT_SECONDS + STOP_TIMEOUT_SECONDS:
@@ -142,13 +143,14 @@ def main() -> int:
         lower = line.lower()
         if "done (" in lower and not ready:
             ready = True
-            for summon in SUMMON_COMMANDS:
-                send(summon)
-            send("save-all flush")
-            save_requested = True
-            save_deadline = time.monotonic() + 20
+            if send_commands:
+                for summon in SUMMON_COMMANDS:
+                    send(summon)
+                send("save-all flush")
+                save_requested = True
+                save_deadline = time.monotonic() + 20
 
-        if ready and save_requested and not stop_requested:
+        if send_commands and ready and save_requested and not stop_requested:
             if "saved the game" in lower or "saved the world" in lower:
                 send("stop")
                 stop_requested = True
@@ -168,15 +170,64 @@ def main() -> int:
         failure = failure or "Gradle/server process had to be force-killed"
 
     reader.join(timeout=2)
-    combined_log = "".join(lines)
+    return return_code, ready, stop_requested, lines, failure
+
+
+def find_eula_file() -> Path | None:
+    expected = RUN_DIR / "eula.txt"
+    if expected.is_file():
+        return expected
+    matches = list(RUN_DIR.rglob("eula.txt"))
+    return matches[0] if matches else None
+
+
+def main() -> int:
+    prepare_run_directory()
+
+    # Phase 1: Fabric's executable server launcher installs its files and
+    # writes an EULA file before refusing to start the actual game server.
+    bootstrap_code, bootstrap_ready, _, bootstrap_lines, bootstrap_failure = run_server_phase(
+        send_commands=False
+    )
+    combined_lines = list(bootstrap_lines)
+    bootstrap_log = "".join(bootstrap_lines)
+
+    if bootstrap_failure:
+        print(f"FAIL: bootstrap phase failed: {bootstrap_failure}", file=sys.stderr)
+        return 1
+
+    if not bootstrap_ready:
+        if "eula" not in bootstrap_log.lower():
+            print(
+                f"FAIL: bootstrap server did not reach ready state or report the EULA gate "
+                f"(exit {bootstrap_code})",
+                file=sys.stderr,
+            )
+            return 1
+
+        eula_file = find_eula_file()
+        if eula_file is None:
+            print("FAIL: Fabric server launcher did not create eula.txt", file=sys.stderr)
+            return 1
+
+        write_server_files(eula_file)
+        print(f"Production launcher bootstrap complete; accepted EULA at {eula_file}")
+
+    # Phase 2: run the real server after its first-run setup and EULA gate.
+    server_code, ready, stop_requested, server_lines, failure = run_server_phase(
+        send_commands=True
+    )
+    combined_lines.extend(server_lines)
+    combined_log = "".join(combined_lines)
+
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     LOG_FILE.write_text(combined_log, encoding="utf-8")
 
     if failure:
         print(f"FAIL: {failure}", file=sys.stderr)
         return 1
-    if return_code != 0:
-        print(f"FAIL: production server Gradle task exited with {return_code}", file=sys.stderr)
+    if server_code != 0:
+        print(f"FAIL: production server Gradle task exited with {server_code}", file=sys.stderr)
         return 1
     if not ready:
         print("FAIL: Fabric dedicated server never reached the ready state", file=sys.stderr)
@@ -194,6 +245,7 @@ def main() -> int:
         "Summoned new Salmon",
         "Summoned new Squid",
         "Summoned new Pufferfish",
+        "Saved the game",
     )
     for marker in required_markers:
         if marker.lower() not in combined_log.lower():
@@ -237,8 +289,8 @@ def main() -> int:
         print("FAIL: dedicated server did not persist a world level.dat", file=sys.stderr)
         return 1
 
-    print("PASS: production Fabric dedicated-server startup")
-    print("PASS: AI Improvements initialized with the distribution JAR")
+    print("PASS: production Fabric dedicated-server bootstrap and EULA setup")
+    print("PASS: production server loaded AI Improvements and Fabric API")
     print("PASS: seven representative mob entity types were summoned")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
