@@ -4,14 +4,16 @@ import com.builtbroken.ai.improvements.modifier.ModifierSystem;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 
-/**
- * Fabric-side replacement point for the old NeoForge entity-join subscriber.
- */
+/** Registers the earliest public Fabric server-side entity-load hook. */
 public final class FabricEntityLifecycle {
     private FabricEntityLifecycle() {
     }
 
     public static void register() {
-        ServerEntityEvents.ENTITY_LOAD.register(ModifierSystem::handleEntityLoad);
+        // ALLOW_LOAD runs immediately before insertion into ServerLevel.
+        ServerEntityEvents.ALLOW_LOAD.register((entity, level, spawnReason, isLoadedFromDisk) -> {
+            ModifierSystem.handleEntityJoinLevel(entity, level);
+            return true;
+        });
     }
 }
