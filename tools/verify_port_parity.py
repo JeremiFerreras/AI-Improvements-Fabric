@@ -153,6 +153,11 @@ def check_source_parity() -> None:
         "Squid.SquidFleeGoal.class",
         "Squid.SquidRandomMovementGoal.class",
         "EatBlockGoal.class",
+        "RandomLookAroundGoal.class",
+        "config.chicken.removeBreed().set(true)",
+        "config.pig.removeTempt().set(true)",
+        "config.removeFishAvoidPlayer.set(true)",
+        "config.removeFishPanic.set(true)",
         "allowRemoveCalls.set(false)",
     ):
         require(marker in game_test, f"GameTest is missing regression case: {marker}")
