@@ -274,6 +274,8 @@ def check_fabric_metadata() -> None:
         "CHUNK_UNLOAD_WAIT_SECONDS = 12",
         "CHUNK_RELOAD_WAIT_SECONDS = 5",
         "COMMAND_PACING_SECONDS = 0.05",
+        '"pause-when-empty-seconds": "0"',
+        '"Server empty for 60 seconds, pausing"',
         "EXPECTED_MOBS_PER_TYPE = 12",
         "pen_setup_commands",
         "force_load_commands",
