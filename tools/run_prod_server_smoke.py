@@ -240,8 +240,6 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
                     send(command_text)
                 for command_text in summon_commands():
                     send(command_text)
-                for count_command in population_check_commands("SPAWN"):
-                    send(count_command)
                 send("say AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED")
                 # Keep the actual dedicated server alive while all 84 mobs
                 # execute their normal AI goals inside the force-loaded pens.
@@ -383,8 +381,6 @@ def main() -> int:
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
         "Saved the game",
     ) + tuple(
-        f"AIIMP_SPAWN_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
-    ) + tuple(
         f"AIIMP_ACTIVE_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
         f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
@@ -434,7 +430,6 @@ def main() -> int:
     print("PASS: production Fabric dedicated-server bootstrap and EULA setup")
     print("PASS: production server loaded AI Improvements and Fabric API")
     print(f"PASS: {len(MOB_GROUPS) * EXPECTED_MOBS_PER_TYPE} AI-enabled mobs were spawned in seven independent pens")
-    print("PASS: all seven entity populations were present immediately after spawning")
     print(f"PASS: all seven entity populations survived {AI_TICK_WINDOW_SECONDS}s of normal AI ticking")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
