@@ -28,44 +28,55 @@ STOP_TIMEOUT_SECONDS = 90
 AI_TICK_WINDOW_SECONDS = 20
 EXPECTED_MOBS_PER_TYPE = 12
 
-# Four land-animal pens occupy chunk 0; three aquatic pens occupy chunk 1.
-# Glass walls and roofs keep the test mobs inside the two force-loaded chunks.
-SUMMON_COMMANDS = (
-    "forceload add 0 0",
-    "forceload add 1 0",
-    "fill 0 79 0 15 79 15 minecraft:stone",
-    "fill 0 80 0 0 82 15 minecraft:glass",
-    "fill 15 80 0 15 82 15 minecraft:glass",
-    "fill 1 80 0 14 82 0 minecraft:glass",
-    "fill 1 80 15 14 82 15 minecraft:glass",
-    "fill 1 83 1 14 83 14 minecraft:glass",
-    "fill 16 79 0 31 79 15 minecraft:stone",
-    "fill 16 80 0 16 82 15 minecraft:glass",
-    "fill 31 80 0 31 82 15 minecraft:glass",
-    "fill 17 80 0 30 82 0 minecraft:glass",
-    "fill 17 80 15 30 82 15 minecraft:glass",
-    "fill 17 83 1 30 83 14 minecraft:glass",
-    "fill 17 80 1 30 82 14 minecraft:water",
-    "scoreboard objectives add AIIMP_COUNT dummy",
-)
+# Each species gets its own fully enclosed 16x16 room and force-loaded chunk.
+# This keeps terrestrial groups apart and avoids accidental entity cramming.
+SUMMON_COMMANDS = ("scoreboard objectives add AIIMP_COUNT dummy",)
 
 def mob_grid(x_start: int, z_start: int, y: int) -> tuple[tuple[int, int, int], ...]:
     return tuple(
-        (x_start + column, y, z_start + row)
+        (x_start + column * 2, y, z_start + row * 2)
         for row in range(3)
         for column in range(4)
     )
 
 
 MOB_GROUPS = (
-    ("cow", "minecraft:cow", "AIIMP_PERSIST_COW", mob_grid(1, 1, 80)),
-    ("chicken", "minecraft:chicken", "AIIMP_PERSIST_CHICKEN", mob_grid(5, 1, 80)),
-    ("pig", "minecraft:pig", "AIIMP_PERSIST_PIG", mob_grid(9, 1, 80)),
-    ("sheep", "minecraft:sheep", "AIIMP_PERSIST_SHEEP", mob_grid(1, 5, 80)),
-    ("salmon", "minecraft:salmon", "AIIMP_PERSIST_SALMON", mob_grid(17, 1, 81)),
-    ("squid", "minecraft:squid", "AIIMP_PERSIST_SQUID", mob_grid(21, 1, 81)),
-    ("pufferfish", "minecraft:pufferfish", "AIIMP_PERSIST_PUFFERFISH", mob_grid(25, 1, 81)),
+    ("cow", "minecraft:cow", "AIIMP_PERSIST_COW", mob_grid(3, 3, 80)),
+    ("chicken", "minecraft:chicken", "AIIMP_PERSIST_CHICKEN", mob_grid(19, 3, 80)),
+    ("pig", "minecraft:pig", "AIIMP_PERSIST_PIG", mob_grid(35, 3, 80)),
+    ("sheep", "minecraft:sheep", "AIIMP_PERSIST_SHEEP", mob_grid(51, 3, 80)),
+    ("salmon", "minecraft:salmon", "AIIMP_PERSIST_SALMON", mob_grid(67, 3, 81)),
+    ("squid", "minecraft:squid", "AIIMP_PERSIST_SQUID", mob_grid(83, 3, 81)),
+    ("pufferfish", "minecraft:pufferfish", "AIIMP_PERSIST_PUFFERFISH", mob_grid(99, 3, 81)),
 )
+
+
+def pen_setup_commands() -> tuple[str, ...]:
+    commands = []
+    for _, entity_type, _, positions in MOB_GROUPS:
+        chunk_x = (positions[0][0] // 16) * 16
+        commands.extend((
+            f"forceload add {chunk_x} 0",
+            f"fill {chunk_x} 79 0 {chunk_x + 15} 79 15 minecraft:stone",
+            f"fill {chunk_x} 80 0 {chunk_x} 82 15 minecraft:glass",
+            f"fill {chunk_x + 15} 80 0 {chunk_x + 15} 82 15 minecraft:glass",
+            f"fill {chunk_x + 1} 80 0 {chunk_x + 14} 82 0 minecraft:glass",
+            f"fill {chunk_x + 1} 80 15 {chunk_x + 14} 82 15 minecraft:glass",
+            f"fill {chunk_x + 1} 83 1 {chunk_x + 14} 83 14 minecraft:glass",
+        ))
+        if entity_type in ("minecraft:salmon", "minecraft:squid", "minecraft:pufferfish"):
+            commands.append(
+                f"fill {chunk_x + 1} 80 1 {chunk_x + 14} 82 14 minecraft:water"
+            )
+    commands.extend(SUMMON_COMMANDS)
+    return tuple(commands)
+
+
+def force_load_commands() -> tuple[str, ...]:
+    return tuple(
+        f"forceload add {(positions[0][0] // 16) * 16} 0"
+        for _, _, _, positions in MOB_GROUPS
+    )
 
 
 def summon_commands() -> tuple[str, ...]:
@@ -225,17 +236,19 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
         if "done (" in lower and not ready:
             ready = True
             if mode == "spawn":
-                for command_text in SUMMON_COMMANDS:
+                for command_text in pen_setup_commands():
                     send(command_text)
                 for command_text in summon_commands():
                     send(command_text)
+                for count_command in population_check_commands("SPAWN"):
+                    send(count_command)
                 send("say AIIMP_ACTIVE_AI_TICK_WINDOW_STARTED")
                 # Keep the actual dedicated server alive while all 84 mobs
                 # execute their normal AI goals inside the force-loaded pens.
                 ai_tick_deadline = time.monotonic() + AI_TICK_WINDOW_SECONDS
             elif mode == "reload":
-                send("forceload add 0 0")
-                send("forceload add 1 0")
+                for force_load in force_load_commands():
+                    send(force_load)
                 # Allow the persistent chunk tickets to materialize entities
                 # before re-counting each saved population.
                 time.sleep(4)
@@ -370,6 +383,8 @@ def main() -> int:
         "AIIMP_ACTIVE_AI_TICK_WINDOW_COMPLETE",
         "Saved the game",
     ) + tuple(
+        f"AIIMP_SPAWN_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
+    ) + tuple(
         f"AIIMP_ACTIVE_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
     ) + tuple(
         f"AIIMP_RELOAD_{name.upper()}_COUNT_OK" for name, _, _, _ in MOB_GROUPS
@@ -418,7 +433,8 @@ def main() -> int:
 
     print("PASS: production Fabric dedicated-server bootstrap and EULA setup")
     print("PASS: production server loaded AI Improvements and Fabric API")
-    print(f"PASS: {len(MOB_GROUPS) * EXPECTED_MOBS_PER_TYPE} AI-enabled mobs were spawned")
+    print(f"PASS: {len(MOB_GROUPS) * EXPECTED_MOBS_PER_TYPE} AI-enabled mobs were spawned in seven independent pens")
+    print("PASS: all seven entity populations were present immediately after spawning")
     print(f"PASS: all seven entity populations survived {AI_TICK_WINDOW_SECONDS}s of normal AI ticking")
     print("PASS: configuration JSON was generated with expected defaults")
     print("PASS: world data was saved and the server shut down")
