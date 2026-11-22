@@ -1,18 +1,29 @@
 # AI Improvements — Fabric 26.3
 
-> **Work in progress. This is an initial Fabric porting scaffold, not a playable or feature-complete release.**
+> **Experimental / unstable port.** The first AI editing pipeline is wired, but this branch is not a stable release and has not yet passed in-game behavior testing.
 
-This branch starts the migration of AI Improvements from NeoForge 26.3 to Fabric 26.3. The Minecraft version is intentionally unchanged.
+This branch ports the NeoForge 26.3 version to Fabric 26.3. The Minecraft version is intentionally unchanged.
 
-## Current state
+## Current experimental features
 
-- Fabric Loom build configuration for Minecraft 26.3.
-- Fabric Loader entrypoint and `fabric.mod.json` metadata.
-- Server entity lifecycle bridge using Fabric API's `ServerEntityEvents.ENTITY_LOAD`.
-- The original `FastTrig` helper is reused unchanged.
-- The original NeoForge source and metadata are preserved under `src/legacy-neoforge/` as a migration reference.
+- Fabric Loom build, Loader entrypoint and metadata.
+- Server-side entity insertion hook using `ServerEntityEvents.ALLOW_LOAD`.
+- JSON configuration at `config/aiimprovements.json`.
+- Original filter and modifier-layer pipeline, now active in Fabric source.
+- Generic mob, fish, pufferfish, squid, cow, chicken, pig and sheep goal rules.
+- Cached `FastTrig` look math and `FixedLookControl` replacement.
+- Fabric Class Tweaker targets for the vanilla internals previously opened by the NeoForge Access Transformer.
+- Original NeoForge Java source and metadata retained under `src/legacy-neoforge/` as a comparison reference.
 
-**No AI goals are modified yet.** The current `ModifierSystem` is an intentional placeholder. Do not install this build expecting the original optimization features to work.
+## Known limitations
+
+- Class Tweaker targets must pass the 26.3 Loom validation task.
+- Entity insertion timing and compatibility with other entity/AI mods need in-game verification.
+- The JSON configuration is read on startup; there is no configuration screen or live reload.
+- Goal replacement is not implemented (the upstream implementation also leaves this as a TODO).
+- Client and dedicated-server launch tests and performance profiling are still required.
+
+**Do not use this branch as a stable release.** Settings can remove AI goals and change entity behavior.
 
 ## Requirements
 
@@ -23,26 +34,27 @@ This branch starts the migration of AI Improvements from NeoForge 26.3 to Fabric
 
 ## Build
 
-On Windows:
+Windows:
 
 ```bat
-gradlew.bat build
+gradlew.bat validateAccessWidener build
 ```
 
-On Linux/macOS:
+Linux/macOS:
 
 ```bash
-./gradlew build
+./gradlew validateAccessWidener build
 ```
 
-The resulting remapped mod JAR is produced under `build/libs/`.
+The remapped mod JAR is produced under `build/libs/`.
 
 ## Porting notes
 
-See [`docs/FABRIC_PORTING_STATUS.md`](docs/FABRIC_PORTING_STATUS.md) for the current checklist and [`docs/PORTING_MAP.md`](docs/PORTING_MAP.md) for the NeoForge-to-Fabric subsystem mapping.
+- [Port status and verification](docs/FABRIC_PORTING_STATUS.md)
+- [NeoForge-to-Fabric mapping](docs/PORTING_MAP.md)
 
 ## Upstream
 
 Original project and feature design: [Built Broken Modding — AI Improvements](https://github.com/BuiltBrokenModding/AI-Improvements).
 
-This Fabric port is maintained separately from the NeoForge source branch. The original MIT license is retained.
+The original MIT license is retained. This Fabric port is maintained separately from the NeoForge source branch.
