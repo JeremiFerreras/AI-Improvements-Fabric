@@ -38,9 +38,14 @@
 - JSON configuration is read at startup; there is no GUI or live reload.
 - There are no regression tests yet for every allowlist/denylist branch and entity-specific goal.
 
-## CI history
+## Verification
 
-The bootstrap build initially exposed Gradle configuration-cache issues in resource expansion and JAR license renaming. Both were addressed by capturing task inputs before task execution. CI now explicitly runs `validateAccessWidener` followed by `build`. The current revision's result must be checked in GitHub Actions before treating it as build-verified.
+- **Class Tweaker validation:** passed on commit `3007afc515ee7d27eadf133b9c0278a2c3bf2bbb`.
+- **Java compilation and JAR task:** passed on that same commit using Java 25 and Fabric Loom 1.19.4.
+- **Artifact packaging:** passed on commit `c84196245a324a2f7d95719184618520fedc58e2`; GitHub Actions uploaded the mod JAR and sources JAR.
+- **In-game verification:** not performed. There has been no client launch, dedicated-server launch, entity behavior regression suite or performance profile.
+
+The bootstrap build initially exposed Gradle configuration-cache issues in resource expansion and JAR license renaming. Those were corrected. A later compile exposed protected access to `Mob.goalSelector` and `Mob.targetSelector`; both were added to the Class Tweaker and the subsequent compilation passed.
 
 ## Next work
 
