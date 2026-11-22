@@ -1,8 +1,8 @@
-# Fabric 26.3 port — implementation status
+# Fabric 26.3 port — implementation and validation status
 
-**Current phase:** complete the code and repository structure by static review.
-Functional testing is deferred until the maintainer explicitly asks for it.
-This document does not declare the port released or practically stable.
+**Current phase:** implementation is complete for the original runtime feature
+set; automated functional validation is active. This is still an unstable
+development build, not a release or a claim of full modpack stability.
 
 ## Base and target
 
@@ -16,73 +16,59 @@ This document does not declare the port released or practically stable.
 - Loom: `1.19-SNAPSHOT`
 - Mod version metadata: `0.5.0-fabric-unstable`
 
-## Code and structure inventory
+## Implementation
 
-The 18 original runtime Java source files are represented by active Fabric
-counterparts. The Fabric initializer and lifecycle adapter replace the
-NeoForge mod entrypoint/event subscriber. The original NeoForge source,
-metadata and access transformer remain isolated under
-`src/legacy-neoforge/`, outside the active Fabric source set.
+The 18 original runtime Java source files have active Fabric counterparts.
+NeoForge-only entrypoint, lifecycle, configuration and access-transformation
+code is isolated under `src/legacy-neoforge/`; it is not part of the active
+Fabric source set.
 
-The active implementation contains:
+The Fabric implementation contains the initializer, pre-insertion server
+entity callback, JSON configuration, generic and species-specific goal filters,
+adaptive modifier/filter pipeline, `FastTrig`, `FixedLookControl`, Fabric
+metadata and Class Tweaker configuration.
 
-- Fabric initializer and server entity lifecycle registration.
-- The original configuration categories and options, represented in JSON.
-- Generic mob, fish, pufferfish, squid, cow, chicken, pig and sheep modifiers.
-- The modifier/filter nodes and dispatch pipeline.
-- `FastTrig` and the `FixedLookControl` replacement.
-- Fabric metadata and Class Tweaker configuration.
-- A preserved GameTest source set under `src/gametest/`, not invoked by the
-  normal package task.
+Known upstream wiring defects are corrected: pufferfish puff uses
+`removeFishPuff`, and squid flee uses `removeSquidFlee`. Goal selector
+mutation is deferred until after traversal. Adaptive ordering only changes
+predicate evaluation order and normalizes counters safely.
 
-The old standalone performance benchmark used pre-26.3 Minecraft classes and
-referenced a controller that is not part of this port. It has been moved to
-`archive/legacy-tools/` for historical reference and is not compiled.
+## Validation now running in CI
 
-## Implementation corrections
+The workflow on this branch performs:
 
-- Pufferfish puff now uses `removeFishPuff`, rather than the miswired
-  `removeFishFollowLeader` reference in the original.
-- Squid flee now uses `removeSquidFlee`, rather than the miswired
-  `removeRandomMove` reference in the original.
-- Goal removal remains deferred until after selector iteration.
-- Adaptive modifier ordering is explicit and counter normalization also
-  handles a single-node layer.
+1. Static source inventory, option mapping, metadata and packaging audit.
+2. Java 25 compilation and Fabric Class Tweaker validation.
+3. Minecraft 26.3 GameTests for all exposed goal-removal options, allowlist /
+   denylist behavior, and vanilla-versus-FixedLookControl rotation.
+4. Production dedicated-server launch using the packaged remapped JAR and
+   Fabric API, not just the development classpath.
+5. A persistent-mob scenario with seven species in separate land/water pens.
+   The script counts each group, verifies actual horizontal movement during
+   AI ticking, removes force-load tickets, proves all seven chunks unloads,
+   reloads them, and checks that every species moves again afterward.
+6. World save, clean server shutdown, second server startup and disk-load
+   population checks.
+7. Production client launch using the packaged JAR under Xvfb, checking mod
+   initialization, LWJGL, resource reload, graphics backend selection and
+   generated configuration.
+8. Final inspection of the remapped distribution JAR and uploaded smoke logs.
 
-See [BEHAVIOR_PARITY.md](BEHAVIOR_PARITY.md) for the source-level comparison.
+The latest verified CI run before the current movement-test expansion is
+[45062439870](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45062439870).
+It passed GameTests, dedicated-server 60-second AI windows, in-session chunk
+reload, disk reload, and headless production-client startup. Its population
+checks proved entity persistence, not individual goal execution; the
+movement assertions are being added to close that gap.
 
-## Current package workflow
+## Limits not established by CI
 
-The normal package task is `buildFabricPort`. It compiles the active Fabric
-source, validates the Class Tweaker configuration and creates the remapped
-JAR.
+- Interactive gameplay with a human player and normal client input.
+- Physical GPU rendering (the CI client uses Xvfb/virtualized graphics).
+- Third-party mods that wrap, replace or inject mob goals/controllers.
+- Natural spawn conditions and spawn-egg behavior across all entity types.
+- Long-duration multiplayer sessions and large modpack interactions.
+- High-load performance beyond the bounded CI mob population.
 
-The validation workflow runs the Fabric GameTest server, a production
-dedicated-server smoke and a headless production-client smoke. The server test
-uses the packaged JAR with Fabric API on the production mod classpath, creates
-EULA/config files, summons seven representative mob types, saves and closes
-the world, reopens the same world and checks that all seven entity types load
-from disk. The client test uses the packaged JAR under Xvfb and confirms mod
-initialization, LWJGL startup, resource reload and configuration creation.
-Neither smoke proves long-running multiplayer, modpack compatibility or
-physical GPU rendering.
-
-The obsolete Travis configuration targeting Java 7 has been removed.
-GitHub Actions is the active package workflow for this Fabric branch.
-
-## Functional checks deferred by request
-
-Do not run these checks until the maintainer explicitly requests them:
-
-- GameTests and live goal-selector behavior.
-- Natural spawning, spawn eggs and command spawning in normal worlds.
-- Long-term chunk unload/reload cycles beyond the one smoke-test save/reopen.
-- Compatibility with third-party mods that add, wrap or replace mob goals.
-- Look rotation equivalence at edge angles, head limits and rapid target
-  changes.
-- Performance under high entity counts.
-- Interactive client gameplay and physical GPU rendering.
-- A long-running dedicated-server session under sustained multiplayer load.
-
-Static source review and package creation must not be presented as proof of
-practical stability.
+The JSON config is read at startup; there is no config GUI or live reload.
+Goal replacement remains unsupported, matching the upstream TODO.
