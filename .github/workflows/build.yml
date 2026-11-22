@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,6 +43,12 @@ jobs:
       - name: Run distribution JAR in production Fabric dedicated server
         run: python tools/run_prod_server_smoke.py
 
+      - name: Install Xvfb for headless production client
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Run packaged production client under Xvfb
+        run: xvfb-run -a python tools/run_prod_client_smoke.py
+
       - name: Inspect packaged Fabric JAR
         shell: bash
         run: |
@@ -60,6 +66,8 @@ jobs:
             **/build/test-results/
             build/production-server-smoke.log
             build/production-server-smoke/config/aiimprovements.json
+            build/production-client-smoke.log
+            build/production-client-smoke/config/aiimprovements.json
           if-no-files-found: ignore
           retention-days: 14
 
@@ -72,5 +80,7 @@ jobs:
             build/libs/*.jar
             build/production-server-smoke.log
             build/production-server-smoke/config/aiimprovements.json
+            build/production-client-smoke.log
+            build/production-client-smoke/config/aiimprovements.json
           if-no-files-found: error
           retention-days: 14

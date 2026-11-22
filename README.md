@@ -52,9 +52,9 @@ shuts the server down.
 
 The GameTest source suite remains under `src/gametest/` and runs in CI.
 Natural spawning, spawn eggs, third-party AI compatibility, long-duration
-server behavior, high-mob-count performance and normal client startup remain
-unverified in practice. The production smoke only covers a fresh server and
-one save/reopen cycle with representative command-spawned mobs.
+server behavior, high-mob-count performance and an interactive client session
+remain unverified in practice. The production client smoke is limited to headless
+startup and resource initialization.
 
 The JSON configuration is read at startup; there is no GUI or live reload.
 Goal replacement remains unsupported, matching the upstream TODO.

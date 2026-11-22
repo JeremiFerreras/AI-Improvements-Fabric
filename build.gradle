@@ -112,3 +112,20 @@ tasks.register("prodServerSmoke", net.fabricmc.loom.task.prod.ServerProductionRu
     outputs.upToDateWhen { false }
     dependsOn(tasks.named("jar"))
 }
+
+
+// Launch the packaged client under an externally supplied Xvfb display.
+// CI invokes this task through xvfb-run so its startup can be inspected headlessly.
+tasks.register("prodClientSmoke", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    group = "verification"
+    description = "Starts the packaged Fabric client under Xvfb for a startup/resource smoke test."
+    useXVFB.set(false)
+    runDir = layout.buildDirectory.dir("production-client-smoke").get().asFile
+    programArgs.add("--width=854")
+    programArgs.add("--height=480")
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    outputs.upToDateWhen { false }
+    dependsOn(tasks.named("jar"))
+}

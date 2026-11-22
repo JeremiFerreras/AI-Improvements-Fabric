@@ -291,6 +291,20 @@ def check_fabric_metadata() -> None:
     ):
         require(marker in smoke, f"Production server smoke coverage missing: {marker}")
 
+    client_build = read(ROOT / "build.gradle")
+    require('tasks.register("prodClientSmoke", net.fabricmc.loom.task.prod.ClientProductionRunTask)' in client_build,
+            "Production client smoke task is missing")
+    require("useXVFB.set(false)" in client_build,
+            "Client smoke must use the outer CI Xvfb display")
+    client_smoke = read(ROOT / "tools/run_prod_client_smoke.py")
+    for marker in (
+        "AI Improvements Fabric 26.3 experimental port initialized",
+        "Backend library: LWJGL version",
+        "Reloading ResourceManager",
+        "aiimprovements.json",
+    ):
+        require(marker in client_smoke, f"Production client smoke coverage missing: {marker}")
+
     workflow = read(ROOT / ".github/workflows/build.yml")
     require("./gradlew --no-daemon validateAccessWidener build" in workflow,
             "GitHub Actions must compile, execute the configured GameTests and build the mod")

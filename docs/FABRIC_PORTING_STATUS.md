@@ -57,14 +57,15 @@ The normal package task is `buildFabricPort`. It compiles the active Fabric
 source, validates the Class Tweaker configuration and creates the remapped
 JAR.
 
-The validation workflow additionally runs the Fabric GameTest server and a
-production-launcher smoke test. The latter starts the packaged distribution JAR
-with Fabric API on the production mod classpath, creates the EULA/config files,
-summons seven representative mob types, saves and closes the world, then opens
-the same world again and checks that all seven entity types load from disk. The
-production task is explicitly forced to execute for every phase so Gradle
-cannot skip the reload as UP-TO-DATE. This is a short-lived single-player
-dedicated-server smoke test, not a long-running multiplayer or modpack test.
+The validation workflow runs the Fabric GameTest server, a production
+dedicated-server smoke and a headless production-client smoke. The server test
+uses the packaged JAR with Fabric API on the production mod classpath, creates
+EULA/config files, summons seven representative mob types, saves and closes
+the world, reopens the same world and checks that all seven entity types load
+from disk. The client test uses the packaged JAR under Xvfb and confirms mod
+initialization, LWJGL startup, resource reload and configuration creation.
+Neither smoke proves long-running multiplayer, modpack compatibility or
+physical GPU rendering.
 
 The obsolete Travis configuration targeting Java 7 has been removed.
 GitHub Actions is the active package workflow for this Fabric branch.
@@ -80,7 +81,8 @@ Do not run these checks until the maintainer explicitly requests them:
 - Look rotation equivalence at edge angles, head limits and rapid target
   changes.
 - Performance under high entity counts.
-- Normal client startup and a long-running dedicated-server session.
+- Interactive client gameplay and physical GPU rendering.
+- A long-running dedicated-server session under sustained multiplayer load.
 
 Static source review and package creation must not be presented as proof of
 practical stability.
