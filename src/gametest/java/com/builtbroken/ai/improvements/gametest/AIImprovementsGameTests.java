@@ -411,6 +411,18 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                     "instant target sample " + i);
         }
 
+        // Start both mobs from exactly the same orientation. Normal spawning
+        // assigns independent random rotations, which would contaminate a
+        // gradual-turn comparison at low per-tick rotation speeds.
+        vanillaMob.setYRot(0.0F);
+        vanillaMob.setYBodyRot(0.0F);
+        vanillaMob.setYHeadRot(0.0F);
+        vanillaMob.setXRot(0.0F);
+        fixedMob.setYRot(0.0F);
+        fixedMob.setYBodyRot(0.0F);
+        fixedMob.setYHeadRot(0.0F);
+        fixedMob.setXRot(0.0F);
+
         // Also compare the inherited smoothing/clamping path over repeated
         // ticks while the target changes through opposing quadrants.
         double[][] gradualTargets = {
