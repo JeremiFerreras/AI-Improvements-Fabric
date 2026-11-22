@@ -128,6 +128,20 @@ def movement_snapshot_commands() -> tuple[str, ...]:
     return tuple(commands)
 
 
+def post_reload_stimulus_commands() -> tuple[str, ...]:
+    """Trigger the normal PanicGoal on farm animals after their chunks reload.
+
+    Random strolling is intentionally probabilistic and can leave a healthy
+    group stationary during a short sample. On-fire is a normal PanicGoal
+    trigger; Invulnerable prevents the diagnostic stimulus from killing mobs.
+    """
+    return tuple(
+        f"execute as @e[type={entity_type},tag={tag}] "
+        "run data merge entity @s {Fire:100s,Invulnerable:1b}"
+        for _, entity_type, tag, _ in MOB_GROUPS[:4]
+    )
+
+
 def movement_check_commands(prefix: str) -> tuple[str, ...]:
     """Require at least one real horizontal position change in every species group."""
     commands = []
@@ -290,6 +304,10 @@ def run_server_phase(mode: str) -> tuple[int, bool, bool, list[str], str | None]
                 send(count_command)
             for movement_command in movement_snapshot_commands():
                 send(movement_command)
+            for stimulus_command in post_reload_stimulus_commands():
+                send(stimulus_command)
+                time.sleep(COMMAND_PACING_SECONDS)
+            send("say AIIMP_POST_CHUNK_RELOAD_PANIC_STIMULUS_APPLIED")
             send("say AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED")
             post_chunk_reload_ai_deadline = time.monotonic() + POST_CHUNK_RELOAD_AI_TICK_SECONDS
             chunk_reload_deadline = None
@@ -484,6 +502,7 @@ def main() -> int:
         "AIIMP_CHUNK_UNLOAD_REQUESTED",
         "AIIMP_CHUNK_UNLOAD_CHECK_COMPLETE",
         "AIIMP_CHUNK_RELOAD_REQUESTED",
+        "AIIMP_POST_CHUNK_RELOAD_PANIC_STIMULUS_APPLIED",
         "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_STARTED",
         "AIIMP_POST_CHUNK_RELOAD_AI_WINDOW_COMPLETE",
         "Saved the game",
