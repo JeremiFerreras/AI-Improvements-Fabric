@@ -47,9 +47,10 @@ The CI validation workflow runs the GameTest server, the remapped JAR through
 Fabric's production dedicated-server launcher, and the packaged client under
 Xvfb. The dedicated-server smoke keeps 84 mobs across seven species active for
 60 seconds and verifies natural movement. After chunk unload/reload, the four
-farm-animal groups receive a temporary invulnerable on-fire stimulus to trigger
-vanilla PanicGoal deterministically; fish and squid continue using their normal
-swimming/movement goals. The server then saves, restarts and verifies the
+farm-animal groups receive a small `minecraft:in_fire` damage event (a member
+of vanilla's `#panic_causes` tag) and are then made invulnerable with the fire
+state held through the observation window. This activates vanilla PanicGoal;
+fish and squid continue using their normal swimming/movement goals. The server then saves, restarts and verifies the
 populations loaded from disk. GameTests cover each exposed goal option and
 compare the optimized look controller with vanilla across 29 target geometries
 and five gradual turns, with a 0.75-degree yaw/pitch tolerance.
