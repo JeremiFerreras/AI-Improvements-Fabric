@@ -98,26 +98,32 @@ for cows, chickens, pigs and sheep, fish and squid options, generic look-goal
 filters, allowlist/denylist behavior, and the independence of the pufferfish
 puff/swim and squid flee/random-movement settings.
 
-The LookControl comparison checks 21 immediate target geometries, including
-all yaw quadrants, exact axes, near-zero offsets, vertical targets and a
-zero-offset target. It then compares vanilla and FixedLookControl through
-five changing targets over 40 gradual rotation ticks each, at a limited
-rotation speed. The acceptance tolerance remains 0.75 degrees for yaw and
-pitch.
+The LookControl comparison checks 29 immediate target geometries, including
+all yaw quadrants, exact axes, near-zero offsets, vertical targets, zero-offset
+targets and values on both sides of vanilla's 1.0E-5 undefined-angle threshold.
+It then compares vanilla and FixedLookControl through five changing targets
+over 40 gradual rotation ticks each, at a limited rotation speed. The test
+normalizes both mobs to the same initial body/head yaw and pitch before gradual
+turns. The acceptance tolerance remains 0.75 degrees for yaw and pitch.
 
 The production-server smoke runs the packaged JAR with 12 AI-enabled mobs per
 species (84 total) across cows, chickens, pigs, sheep, salmon, squid and
-pufferfish. It now checks horizontal coordinate changes for each species,
-before and after an in-session chunk unload/reload. It also saves the world,
+pufferfish. It checks horizontal coordinate changes for every species during
+a 60-second natural AI window. After an in-session chunk unload/reload, it
+applies a temporary invulnerable on-fire stimulus to the four farm-animal
+groups to activate vanilla PanicGoal deterministically; fish and squid retain
+their normal swim/movement goals. It checks movement again, saves the world,
 restarts the dedicated server and verifies all seven populations load from
 disk. The client smoke launches the packaged JAR under Xvfb and checks
 initializer execution, LWJGL/resource initialization, graphics backend
 selection and configuration generation.
 
-The latest completed evidence is CI run
-[45062439870](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45062439870).
-That run predates the new movement/rotation edge assertions in the current
-commit; those will be evaluated by the next CI run.
+An earlier full production integration run
+[45070846309](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45070846309)
+passed client startup, server startup, entity movement, chunk reload and disk
+persistence. The new deterministic post-reload stimulus and expanded rotation
+edge matrix are being re-run in the current CI iteration; that run must finish
+successfully before those additions are treated as passed.
 
 ## Remaining practical verification
 
