@@ -182,6 +182,14 @@ def check_runtime_wiring() -> None:
     require("FastTrig.atan2(a, b)" in look, "FixedLookControl no longer uses FastTrig")
     require("57.2957763671875D" in look and "- 90.0F" in look,
             "FixedLookControl angle conversion changed")
+    require("Math.abs(dy) > 1.0E-5F" in look
+            and "Math.abs(horizontalDistance) > 1.0E-5F" in look,
+            "FixedLookControl pitch undefined-vector threshold diverged from vanilla")
+    require("Math.abs(dz) > 1.0E-5F" in look
+            and "Math.abs(dx) > 1.0E-5F" in look,
+            "FixedLookControl yaw undefined-vector threshold diverged from vanilla")
+    require("Optional.empty()" in look,
+            "FixedLookControl must preserve vanilla undefined-angle behavior")
     for field in ("wantedX", "wantedY", "wantedZ", "lookAtCooldown", "xMaxRotAngle", "yMaxRotSpeed"):
         require(field in look, f"FixedLookControl no longer copies {field}")
     require("if (oldHelper != null)" in read(FABRIC / "modifier/ModifierSystem.java"),
