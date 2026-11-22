@@ -44,10 +44,16 @@ jobs:
         run: python tools/run_prod_server_smoke.py
 
       - name: Install Xvfb for headless production client
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth mesa-utils libgl1-mesa-dri libglx-mesa0 libegl1 mesa-vulkan-drivers
+
+      - name: Check software OpenGL under Xvfb
+        run: LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" glxinfo -B
 
       - name: Run packaged production client under Xvfb
-        run: xvfb-run -a python tools/run_prod_client_smoke.py
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: "llvmpipe"
+        run: xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" python tools/run_prod_client_smoke.py
 
       - name: Inspect packaged Fabric JAR
         shell: bash
