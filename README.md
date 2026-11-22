@@ -1,73 +1,48 @@
-# AI-Improvements-
-General adjustment to MC's AIs to improve performance and functionality 
+# AI Improvements — Fabric 26.3
 
-Downloads: https://www.curseforge.com/minecraft/mc-mods/ai-improvements
+> **Work in progress. This is an initial Fabric porting scaffold, not a playable or feature-complete release.**
 
-# Improvements
+This branch starts the migration of AI Improvements from NeoForge 26.3 to Fabric 26.3. The Minecraft version is intentionally unchanged.
 
-* Tan math cache - Large improvement in 1.7-1.9, Small improvement 1.10+
-* Disable AI tasks - Large improvements on any version for performance at the cost of mechanics 
+## Current state
 
+- Fabric Loom build configuration for Minecraft 26.3.
+- Fabric Loader entrypoint and `fabric.mod.json` metadata.
+- Server entity lifecycle bridge using Fabric API's `ServerEntityEvents.ENTITY_LOAD`.
+- The original `FastTrig` helper is reused unchanged.
+- The original NeoForge source and metadata are preserved under `src/legacy-neoforge/` as a migration reference.
 
-# Change Log
+**No AI goals are modified yet.** The current `ModifierSystem` is an intentional placeholder. Do not install this build expecting the original optimization features to work.
 
-# 0.5.2
+## Requirements
 
-## User Impact
-* Performance: Removed listener for LivingSpawnEvent. It is not needed, and added unnecessary overhead
+- Minecraft 26.3
+- Java 25
+- Fabric Loader 0.20.1 or newer
+- Fabric API 0.166.2+26.3
 
-# 0.5.1
+## Build
 
-## User Impact
-* Fixed: Compatibility with Forge 41.0.94+
+On Windows:
 
-# 0.5.0
+```bat
+gradlew.bat build
+```
 
-## User Impact
-* Added: Ability to define which entities are affected by the remove look goal, remove look random, replace look controller configs
-    * Comes with a reset of those config values
-* Fixed: Crash involving the filter system
+On Linux/macOS:
 
-## Dev Impact
-* Added: Noop filter node
-* Added: Filtered remove modifier to handle remove calls that are backed by a filtered config value
+```bash
+./gradlew build
+```
 
-# 0.4.0
+The resulting remapped mod JAR is produced under `build/libs/`.
 
-## User Impact
-* Added: Support for disabling floating, panicking, breeding, tempting, follow parent, and stroll AI from cows, chickens, pigs, and sheep
-* Added: Support for disabling eat block AI from sheep
+## Porting notes
 
-# 0.3.0
+See [`docs/FABRIC_PORTING_STATUS.md`](docs/FABRIC_PORTING_STATUS.md) for the current checklist and [`docs/PORTING_MAP.md`](docs/PORTING_MAP.md) for the NeoForge-to-Fabric subsystem mapping.
 
-## User Impact
-* Fixed: Config pathing doing 'entity.entity.entity.entity.entity'
-* Added: Support for disabling squid random swim and flee AI
+## Upstream
 
-## Dev Impact
-* Implemented: New system for handling filtering and editing AI modification tasks. Avoids the need for a mess of IF-ELSE statements.
-* Implemented: Sorted system for remove calls, Edits most often applied will float to the top of the list to reduce CPU time used for editing mobs.
-* Added: Filter system - allows dev to filter edits to a specific mob-type or mob with settings
-* Added: Generic remove edit - allows removing based on instance check and config check
-* Added: Filter layer - allows registering a collection of edit tasks with sub layers
-* Added: Modification layer - allows handling filter layers, combat AI edits, and goal edits as a set
-* Added: Filter layer for all entities
-* Added: Filter level for mobs
-* Added: Filter level for fish
-* Added: Filter level for squid
-* Ported: look helper as a modification edit
-* Ported: fish edits as generic edits
+Original project and feature design: [Built Broken Modding — AI Improvements](https://github.com/BuiltBrokenModding/AI-Improvements).
 
-
-# 0.2.2
-* Fixed: Crash due to invalid access transformer
-
-# 0.2.1 - Init MC 1.14.4 release, 8/1/2019 9pm Est
-* Update to 1.14.4
-* Added: fish swim remove option
-* Added: fish panic remove option
-* Added: fish avoid player remove option
-
-# Before 
-* Added: Look Helper override
-* Added: Tan math cache, used by Look helper to improve speed
+This Fabric port is maintained separately from the NeoForge source branch. The original MIT license is retained.

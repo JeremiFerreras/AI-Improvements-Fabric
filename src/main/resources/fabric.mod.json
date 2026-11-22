@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "aiimprovements",
+  "version": "${version}",
+  "name": "AI Improvements",
+  "description": "Small adjustments and improvements to Minecraft AI logic, focused on server performance. Fabric 26.3 port in progress; AI modification features are not active yet.",
+  "authors": [
+    "Built Broken Modding",
+    "Fabric port: JeremiFerreras"
+  ],
+  "contact": {
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/ai-improvements",
+    "sources": "https://github.com/JeremiFerreras/AI-Improvements-Fabric",
+    "issues": "https://github.com/JeremiFerreras/AI-Improvements-Fabric/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.builtbroken.ai.improvements.AIImprovementsFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "0.166.2+26.3"
+  }
+}

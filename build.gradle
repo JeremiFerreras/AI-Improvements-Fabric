@@ -1,70 +1,74 @@
 plugins {
-	id 'java-library'
-	id 'eclipse'
-	id 'idea'
-	id 'net.neoforged.moddev' version '2.0.147'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+group = project.group
+version = project.version
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    // Loom supplies the repositories needed for Minecraft and Fabric.
+}
+
+loom {
+    mods {
+        "aiimprovements" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
 }
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
-		vendor = JvmVendorSpec.MICROSOFT
-	}
-}
-println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
-
-base {
-	archivesName = project.properties['file_name']
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
 }
 
-group='com.builtbroken.aiimprovements'
-
-neoForge {
-	version = project.properties['neoforge_version']
-    validateAccessTransformers = true
-
-	runs {
-		configureEach {
-			logLevel = org.slf4j.event.Level.DEBUG
-			gameDirectory = project.file("run/" + name)
-			ideName = "AIImprovements " + ideName.get()
-		}
-
-		client {
-			client()
-		}
-
-		server {
-			server()
-			programArgument('-nogui')
-		}
-	}
-
-	mods {
-		aiimprovements {
-			sourceSet(sourceSets.main)
-		}
-	}
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
 }
 
 tasks.named('jar', Jar).configure {
     manifest {
-        attributes(["Specification-Title": "AI-Improvements",
-                    "Specification-Vendor": "Built Broken Modding",
-                    "Specification-Version": project.properties['version'],
-                    "Implementation-Title": "AI-Improvements",
-                    "Implementation-Version": project.properties['version'],
-                    "Implementation-Vendor" :"Built Broken Modding"])
+        attributes([
+            "Specification-Title": "AI-Improvements",
+            "Specification-Vendor": "Built Broken Modding",
+            "Specification-Version": project.version,
+            "Implementation-Title": "AI-Improvements Fabric",
+            "Implementation-Version": project.version,
+            "Implementation-Vendor": "JeremiFerreras"
+        ])
+    }
+
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-}
-
-idea {
-	module {
-		downloadSources = true
-		downloadJavadoc = true
-	}
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
 }
