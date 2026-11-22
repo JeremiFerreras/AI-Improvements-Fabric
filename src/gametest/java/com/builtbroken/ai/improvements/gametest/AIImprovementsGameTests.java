@@ -46,7 +46,7 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                 BoolState.capture(config.removeLookGoal.isAllowlist()),
                 BoolState.capture(config.cow.removeFloat()),
                 BoolState.capture(config.cow.removeBreed()),
-                BoolState.capture(config.sheep.removeEatBlock),
+                BoolState.capture(config.removeSheepEatBlock),
                 BoolState.capture(config.removeFishSwim),
                 BoolState.capture(config.removeFishFollowLeader),
                 BoolState.capture(config.removeFishPuff),
@@ -69,7 +69,7 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             config.cow.removeFloat().set(false);
             config.cow.removeBreed().set(false);
-            config.sheep.removeEatBlock.set(false);
+            config.removeSheepEatBlock.set(false);
 
             config.removeFishSwim.set(false);
             config.removeFishFollowLeader.set(false);
@@ -210,7 +210,7 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             // Sheep's block-eating option must not remove other animal goals.
             config.removeRandomMove.set(false);
-            config.sheep.removeEatBlock.set(true);
+            config.removeSheepEatBlock.set(true);
 
             Mob sheep = helper.spawn(EntityTypes.SHEEP, BlockPos.ZERO);
             helper.assertFalse(hasGoal(sheep, EatBlockGoal.class),
