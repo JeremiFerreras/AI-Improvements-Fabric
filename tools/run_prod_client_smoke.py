@@ -32,13 +32,20 @@ REQUIRED_MARKERS = (
     "Reloading ResourceManager",
 )
 
+# Minecraft 26.3 may reject the OpenGL backend on a virtual display and
+# successfully fall back to Vulkan/llvmpipe. Accept either selected backend.
+GRAPHICS_BACKEND_MARKERS = (
+    "Using graphics backend OpenGL",
+    "Using graphics backend Vulkan",
+)
+
 FATAL_MARKERS = (
     "NoSuchFieldError",
     "NoSuchMethodError",
     "NoClassDefFoundError",
     "Mixin apply failed",
     "Exception in thread",
-    "Failed to create backend OpenGL",
+    "Failed to create backend Vulkan",
 )
 
 
@@ -111,6 +118,7 @@ def main() -> int:
     found: set[str] = set()
     started_at = time.monotonic()
     ready_at: float | None = None
+    selected_graphics_backend: str | None = None
     stream_closed = False
     failure: str | None = None
 
@@ -140,6 +148,10 @@ def main() -> int:
             if marker.lower() in line.lower():
                 found.add(marker)
 
+        for marker in GRAPHICS_BACKEND_MARKERS:
+            if marker.lower() in line.lower():
+                selected_graphics_backend = marker.removeprefix("Using graphics backend ")
+
         for marker in FATAL_MARKERS:
             if marker.lower() in line.lower():
                 failure = f"Fatal client startup marker found: {line.strip()}"
@@ -147,7 +159,7 @@ def main() -> int:
         if failure:
             break
 
-        if len(found) == len(REQUIRED_MARKERS) and ready_at is None:
+        if len(found) == len(REQUIRED_MARKERS) and selected_graphics_backend is not None and ready_at is None:
             ready_at = time.monotonic()
             print("Production client reached LWJGL/resource initialization; holding briefly before controlled shutdown.")
 
@@ -165,6 +177,9 @@ def main() -> int:
     missing = [marker for marker in REQUIRED_MARKERS if marker not in found]
     if missing:
         print("FAIL: production client is missing startup markers: " + ", ".join(missing), file=sys.stderr)
+        return 1
+    if selected_graphics_backend is None:
+        print("FAIL: client did not select an OpenGL or Vulkan graphics backend", file=sys.stderr)
         return 1
 
     config_path = RUN_DIR / "config" / "aiimprovements.json"
@@ -190,6 +205,7 @@ def main() -> int:
 
     print("PASS: production Fabric client loaded the packaged mod")
     print("PASS: LWJGL and resource manager initialized under Xvfb")
+    print(f"PASS: client selected graphics backend {selected_graphics_backend}")
     print("PASS: client generated a valid AI Improvements configuration")
     print(f"PASS: client process group was stopped after startup smoke (exit={return_code})")
     print("NOTE: this does not validate physical GPU rendering or interactive gameplay")

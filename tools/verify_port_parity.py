@@ -317,6 +317,10 @@ def check_fabric_metadata() -> None:
         "AI Improvements Fabric 26.3 experimental port initialized",
         "Backend library: LWJGL version",
         "Reloading ResourceManager",
+        "GRAPHICS_BACKEND_MARKERS",
+        "Using graphics backend OpenGL",
+        "Using graphics backend Vulkan",
+        "Failed to create backend Vulkan",
         "aiimprovements.json",
     ):
         require(marker in client_smoke, f"Production client smoke coverage missing: {marker}")
