@@ -38,6 +38,7 @@ FATAL_MARKERS = (
     "NoClassDefFoundError",
     "Mixin apply failed",
     "Exception in thread",
+    "Failed to create backend OpenGL",
 )
 
 
