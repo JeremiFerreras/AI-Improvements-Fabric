@@ -40,13 +40,19 @@ The workflow on this branch performs:
 1. Static source inventory, option mapping, metadata and packaging audit.
 2. Java 25 compilation and Fabric Class Tweaker validation.
 3. Minecraft 26.3 GameTests for all exposed goal-removal options, allowlist /
-   denylist behavior, and vanilla-versus-FixedLookControl rotation.
+   denylist behavior, and vanilla-versus-FixedLookControl rotation. The
+   controller comparison checks 29 immediate geometries (including both sides
+   of vanilla's 1.0E-5 undefined-angle threshold) plus five changing targets
+   over 40 gradual ticks each, with a 0.75-degree yaw/pitch tolerance.
 4. Production dedicated-server launch using the packaged remapped JAR and
    Fabric API, not just the development classpath.
 5. A persistent-mob scenario with seven species in separate land/water pens.
-   The script counts each group, verifies actual horizontal movement during
-   AI ticking, removes force-load tickets, proves all seven chunks unloads,
-   reloads them, and checks that every species moves again afterward.
+   The script counts each group and checks horizontal movement during a
+   60-second natural AI window. It removes force-load tickets, verifies that
+   all seven chunks unload, reloads them, then applies a temporary invulnerable
+   on-fire stimulus to the four farm-animal groups to activate vanilla
+   PanicGoal deterministically. Fish and squid retain their normal swimming /
+   movement behavior. Movement is checked again for each species.
 6. World save, clean server shutdown, second server startup and disk-load
    population checks.
 7. Production client launch using the packaged JAR under Xvfb, checking mod
@@ -54,12 +60,12 @@ The workflow on this branch performs:
    generated configuration.
 8. Final inspection of the remapped distribution JAR and uploaded smoke logs.
 
-The latest verified CI run before the current movement-test expansion is
-[45062439870](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45062439870).
-It passed GameTests, dedicated-server 60-second AI windows, in-session chunk
-reload, disk reload, and headless production-client startup. Its population
-checks proved entity persistence, not individual goal execution; the
-movement assertions are being added to close that gap.
+A full earlier production run,
+[45070846309](https://github.com/JeremiFerreras/AI-Improvements-Fabric/actions/runs/45070846309),
+passed packaged-client startup, dedicated-server launch, entity movement,
+chunk reload and disk persistence. The current iteration extends that coverage
+with deterministic post-reload PanicGoal stimulation; its final CI run must
+complete before this extension is considered passed.
 
 ## Limits not established by CI
 
