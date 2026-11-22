@@ -1,9 +1,10 @@
 # Fabric 26.3 port status
 
-**Checkpoint:** `fabric-experimental-0.4`  
-**Overall status:** experimental / unstable. Source parity, Class Tweaker
-validation, build packaging and server-side GameTests are now part of CI.
-Runtime GameTests must pass before considering a stable release.
+**Checkpoint:** `fabric-experimental-0.5`  
+**Overall status:** experimental / unstable. Source parity checks, Class Tweaker
+validation, server GameTests, compilation and JAR inspection pass in CI.
+Normal client startup, compatibility with third-party AI mods and performance
+under load have not yet been proven.
 
 ## Base and target
 
@@ -16,70 +17,90 @@ Runtime GameTests must pass before considering a stable release.
 - Loom: `1.19-SNAPSHOT` (resolved by Gradle as 1.19.4)
 - Fabric API: `0.166.2+26.3`
 - Gradle: `9.8.2`
-- Mod version: `0.5.5-fabric.0.4.0-unstable`
+- Mod version: `0.5.0-fabric-unstable`
 
 ## Code reviewed and improved
 
-- Compared the original ZIP's Java source with the preserved NeoForge tree
-  and the active Fabric source.
+- Compared the full original NeoForge 26.3 configuration and modifier sources
+  against the active Fabric implementation.
+- Confirmed every original config category and setting is represented:
+  global, generic mob filters, fish, squid, cow, chicken, pig, sheep and
+  sheep's separate eat-block option.
 - Confirmed `FastTrig.java` is byte-for-byte identical.
 - Compared the exact entity-manager insertion hooks: NeoForge's
   `EntityJoinLevelEvent` and Fabric's `ServerEntityEvents.ALLOW_LOAD` both
   run at the head of `PersistentEntitySectionManager.addEntity`, before
   entity-manager insertion.
-- Preserved the original entity subtype filters, goal types, and default
-  config values.
+- Preserved the original entity subtype filters and goal predicate classes.
 - Corrected the two upstream option miswirings for pufferfish puff and
   squid flee; details are in `docs/BEHAVIOR_PARITY.md`.
 - Improved adaptive modifier ordering and overflow normalization without
   changing which goal predicates are registered.
 - Kept goal removal deferred until after selector iteration.
-- Added server GameTests that spawn actual mobs and inspect their goal
-  selectors after the entity insertion callback.
-- The first runtime test exposed a bad assumption in the test itself: the
-  vanilla 26.3 Cow did not contain the FloatGoal the test expected at tick 0.
-  The suite has been changed to record the actual goal-selector inventory
-  for Cow, Sheep, Pufferfish and Squid before defining assertions. This avoids
-  importing outdated AI assumptions from older Minecraft versions.
+- Preserved the allowlist/denylist truth table and default values.
+- Added server GameTests using normal `helper.spawn` calls. The tests inspect
+  live goal selectors immediately after entity insertion, before the first AI
+  tick.
+
+## Runtime vanilla goal baselines observed on Minecraft 26.3
+
+With removal settings disabled, the GameTest server reported:
+
+- Cow: 8 goals — Breed, Float, FollowParent, LookAtPlayer, Panic,
+  RandomLookAround, Tempt and WaterAvoidingRandomStroll.
+- Sheep: 9 goals — the cow set plus EatBlock.
+- Pufferfish: 4 goals — AvoidEntity, Panic, FishSwim and PufferfishPuff.
+- Squid: 2 goals — SquidFlee and SquidRandomMovement.
+
+The initial diagnostic attempt used `spawnWithNoFreeWill`, which deliberately
+disables AI and produced empty selectors. The test was corrected to use normal
+AI-enabled spawns; those are the baselines recorded above.
 
 ## Automated server GameTests
 
-The GameTest suite runs inside the Minecraft 26.3 server test environment
-through Fabric Loom. The first run caught a wrong test assumption: vanilla
-Cow in this Minecraft version did not contain the FloatGoal expected by the
-initial assertion. That failure was in the test expectation, not in the
-mod's goal-removal code.
+The current server GameTest matrix verifies:
 
-The current diagnostic test records the real goal-selector contents and
-LookControl class for Cow, Sheep, Pufferfish and Squid with all relevant
-removal flags disabled. The next step is to build assertions only around
-goals confirmed by this runtime inventory, then rerun the tests with each
-option toggled independently.
+- Cow `remove_float` removes FloatGoal but preserves BreedGoal.
+- `allow_remove_calls=false` prevents the same removal.
+- Chicken `remove_breed` removes BreedGoal.
+- Pig `remove_tempt` removes TemptGoal but preserves BreedGoal.
+- `remove_look_goal` and `remove_look_random` are independent.
+- Generic look-goal options obey allowlist and denylist decisions.
+- FixedLookControl is installed only when enabled and allowed by its entity
+  filter.
+- Pufferfish puff, swimming, avoid-player and panic settings are independent.
+- Squid flee and random movement settings are independent.
+- Sheep `remove_eat_block` removes EatBlockGoal but preserves FloatGoal.
 
-The test temporarily changes in-memory settings and restores all touched
-values in a finally block. It uses one GameTest method to avoid parallel
-tests racing over the singleton configuration.
+The tests capture and restore all touched in-memory options and list filters
+in a `finally` block. One test method is used to avoid parallel mutation of
+the singleton configuration.
 
 ## CI verification
 
-The workflow runs:
+The full workflow on the experimental branch runs:
 
-1. Static source parity checks.
-2. Loom `validateAccessWidener`.
-3. Minecraft server GameTests through the `build` task.
+1. Static NeoForge/Fabric source-parity checks.
+2. Loom `validateAccessWidener` against Minecraft 26.3.
+3. Minecraft 26.3 server GameTests.
 4. Java compilation and JAR packaging.
-5. JAR metadata/class-content verification.
-6. Uploads test reports on failure and JAR artifacts on success.
+5. JAR metadata and required-class verification.
+6. Upload of the main and sources JAR artifacts.
 
-## Not yet proven in-game
+The expanded GameTest matrix passed with the output
+`All 2 required tests passed`; the build reported `BUILD SUCCESSFUL`.
 
-- Natural spawning, spawn eggs and command spawning across all dimensions.
+## Not yet proven
+
+- Natural spawning, spawn eggs and command spawning in normal worlds.
 - Chunk unload/reload and disk-loaded entity behavior.
-- Compatibility with third-party mods that add or replace goals.
-- Runtime look rotation under edge angles and rotation limits.
-- Performance under high entity counts.
-- Client startup and dedicated-server startup with a normal production profile.
+- Compatibility with third-party mods that add, wrap or replace mob goals.
+- Look rotation equivalence under edge angles, head limits and rapid target
+  changes.
+- Performance under high entity counts compared with NeoForge.
+- Normal client startup and a long-running dedicated-server session.
 
-A passing GameTest suite is stronger than a compile-only check, but it is not
-proof of complete behavior parity with every modded mob. Manual comparison
-against NeoForge remains necessary before declaring the port stable.
+A passing GameTest suite proves the listed cases in a Fabric 26.3 test server.
+It does not prove complete behavior parity for every vanilla/third-party mob
+or stable performance in a real modpack. Keep the branch unstable until those
+manual checks are completed.
