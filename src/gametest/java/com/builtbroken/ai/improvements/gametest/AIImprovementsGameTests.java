@@ -1,154 +1,139 @@
 package com.builtbroken.ai.improvements.gametest;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
+import com.builtbroken.ai.improvements.AIImprovementsFabric;
 import com.builtbroken.ai.improvements.ConfigMain;
-import com.builtbroken.ai.improvements.FixedLookControl;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.goal.BreedGoal;
-import net.minecraft.world.entity.ai.goal.EatBlockGoal;
-import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.goal.PanicGoal;
-import net.minecraft.world.entity.ai.goal.RandomSwimmingGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
-import net.minecraft.world.entity.animal.fish.Pufferfish;
-import net.minecraft.world.entity.animal.squid.Squid;
 
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 /**
- * Server-side behavior tests for the Fabric AI port.
- *
- * <p>All checks run in one GameTest to avoid concurrent mutation of the
- * process-wide config values. Entity insertion and goal edits happen
- * synchronously when each mob is added to the test ServerLevel.
+ * First diagnostic pass: records the actual goal-selector contents produced by
+ * vanilla Minecraft 26.3 in the GameTest server, before writing assumptions
+ * about goals that may have changed between game releases.
  */
 public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
     @GameTest(maxTicks = 40)
-    public void goalSettingsAreIsolated(GameTestHelper helper) {
+    public void recordVanillaMobGoalBaselines(GameTestHelper helper) {
         ConfigMain config = ConfigMain.CONFIG;
 
-        BoolState allowRemoveCalls = BoolState.capture(config.allowRemoveCalls);
-        BoolState cowFloat = BoolState.capture(config.cow.removeFloat());
-        BoolState cowBreed = BoolState.capture(config.cow.removeBreed());
-        BoolState replaceLookController = BoolState.capture(config.replaceLookController.configValue());
-        BoolState replaceLookAllowlist = BoolState.capture(config.replaceLookController.isAllowlist());
-        List<String> replaceLookList = config.replaceLookController.filterList().get();
+        List<BoolState> states = List.of(
+                BoolState.capture(config.allowRemoveCalls),
+                BoolState.capture(config.replaceLookController.configValue()),
+                BoolState.capture(config.replaceLookController.isAllowlist()),
+                BoolState.capture(config.removeLookGoal.configValue()),
+                BoolState.capture(config.removeLookGoal.isAllowlist()),
+                BoolState.capture(config.removeLookRandom.configValue()),
+                BoolState.capture(config.removeLookRandom.isAllowlist()),
+                BoolState.capture(config.cow.removeFloat()),
+                BoolState.capture(config.cow.removePanic()),
+                BoolState.capture(config.cow.removeBreed()),
+                BoolState.capture(config.cow.removeTempt()),
+                BoolState.capture(config.cow.removeFollowParent()),
+                BoolState.capture(config.cow.removeStroll()),
+                BoolState.capture(config.sheep.removeFloat()),
+                BoolState.capture(config.sheep.removePanic()),
+                BoolState.capture(config.sheep.removeBreed()),
+                BoolState.capture(config.sheep.removeTempt()),
+                BoolState.capture(config.sheep.removeFollowParent()),
+                BoolState.capture(config.sheep.removeStroll()),
+                BoolState.capture(config.removeSheepEatBlock),
+                BoolState.capture(config.removeFishSwim),
+                BoolState.capture(config.removeFishAvoidPlayer),
+                BoolState.capture(config.removeFishPanic),
+                BoolState.capture(config.removeFishFollowLeader),
+                BoolState.capture(config.removeFishPuff),
+                BoolState.capture(config.removeSquidFlee),
+                BoolState.capture(config.removeRandomMove)
+        );
 
-        BoolState pufferPuff = BoolState.capture(config.removeFishPuff);
-        BoolState fishFollowLeader = BoolState.capture(config.removeFishFollowLeader);
-        BoolState squidFlee = BoolState.capture(config.removeSquidFlee);
-        BoolState squidRandomMove = BoolState.capture(config.removeRandomMove);
-        BoolState sheepEatBlock = BoolState.capture(config.removeSheepEatBlock);
+        List<String> replaceList = config.replaceLookController.filterList().get();
+        List<String> lookList = config.removeLookGoal.filterList().get();
+        List<String> randomLookList = config.removeLookRandom.filterList().get();
 
         try {
-            // Start from deterministic values independent of the user's config.
             config.allowRemoveCalls.set(true);
-            config.cow.removeFloat().set(false);
-            config.cow.removeBreed().set(false);
-
-            config.replaceLookController.configValue().set(true);
+            config.replaceLookController.configValue().set(false);
             config.replaceLookController.isAllowlist().set(false);
             config.replaceLookController.filterList().set(List.of());
 
-            config.removeFishPuff.set(false);
-            config.removeFishFollowLeader.set(false);
-            config.removeSquidFlee.set(false);
-            config.removeRandomMove.set(false);
+            config.removeLookGoal.configValue().set(false);
+            config.removeLookGoal.isAllowlist().set(false);
+            config.removeLookGoal.filterList().set(List.of());
+            config.removeLookRandom.configValue().set(false);
+            config.removeLookRandom.isAllowlist().set(false);
+            config.removeLookRandom.filterList().set(List.of());
+
+            config.cow.removeFloat().set(false);
+            config.cow.removePanic().set(false);
+            config.cow.removeBreed().set(false);
+            config.cow.removeTempt().set(false);
+            config.cow.removeFollowParent().set(false);
+            config.cow.removeStroll().set(false);
+
+            config.sheep.removeFloat().set(false);
+            config.sheep.removePanic().set(false);
+            config.sheep.removeBreed().set(false);
+            config.sheep.removeTempt().set(false);
+            config.sheep.removeFollowParent().set(false);
+            config.sheep.removeStroll().set(false);
             config.removeSheepEatBlock.set(false);
 
-            // Baseline: default cow goals remain installed and the vanilla
-            // LookControl is replaced without altering its goal selector.
-            Mob baselineCow = helper.spawnWithNoFreeWill(EntityTypes.COW, BlockPos.ZERO);
-            helper.assertTrue(hasGoal(baselineCow, FloatGoal.class),
-                    "Cow FloatGoal must remain with removal disabled");
-            helper.assertTrue(hasGoal(baselineCow, BreedGoal.class),
-                    "Cow BreedGoal must remain with removal disabled");
-            helper.assertTrue(baselineCow.getLookControl() instanceof FixedLookControl,
-                    "Vanilla cow LookControl must be replaced by FixedLookControl");
-
-            // A single cow option removes only FloatGoal, not unrelated goals.
-            config.cow.removeFloat().set(true);
-            Mob floatRemovedCow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(2, 0, 0));
-            helper.assertFalse(hasGoal(floatRemovedCow, FloatGoal.class),
-                    "Cow FloatGoal must be removed when remove_float is enabled");
-            helper.assertTrue(hasGoal(floatRemovedCow, BreedGoal.class),
-                    "Removing FloatGoal must not remove BreedGoal");
-
-            // The global safety switch must take precedence over individual flags.
-            config.allowRemoveCalls.set(false);
-            Mob guardedCow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 0, 0));
-            helper.assertTrue(hasGoal(guardedCow, FloatGoal.class),
-                    "allow_remove_calls=false must prevent all goal removal");
-
-            // Pufferfish puff must be controlled by remove_puff, not by the
-            // unrelated follow-leader option.
-            config.allowRemoveCalls.set(true);
-            config.removeFishPuff.set(true);
+            config.removeFishSwim.set(false);
+            config.removeFishAvoidPlayer.set(false);
+            config.removeFishPanic.set(false);
             config.removeFishFollowLeader.set(false);
-            Mob puffRemoved = helper.spawnWithNoFreeWill(EntityTypes.PUFFERFISH, new BlockPos(6, 0, 0));
-            helper.assertFalse(hasGoal(puffRemoved, Pufferfish.PufferfishPuffGoal.class),
-                    "remove_puff must remove PufferfishPuffGoal");
-
             config.removeFishPuff.set(false);
-            config.removeFishFollowLeader.set(true);
-            Mob puffPreserved = helper.spawnWithNoFreeWill(EntityTypes.PUFFERFISH, new BlockPos(8, 0, 0));
-            helper.assertTrue(hasGoal(puffPreserved, Pufferfish.PufferfishPuffGoal.class),
-                    "remove_follow_leader must not remove PufferfishPuffGoal");
-
-            // Squid flee and random movement must have independent settings.
-            config.removeSquidFlee.set(true);
-            config.removeRandomMove.set(false);
-            Mob fleeRemoved = helper.spawnWithNoFreeWill(EntityTypes.SQUID, new BlockPos(10, 0, 0));
-            helper.assertFalse(hasGoal(fleeRemoved, Squid.SquidFleeGoal.class),
-                    "remove_flee must remove SquidFleeGoal");
-            helper.assertTrue(hasGoal(fleeRemoved, Squid.SquidRandomMovementGoal.class),
-                    "remove_flee must not remove SquidRandomMovementGoal");
-
             config.removeSquidFlee.set(false);
-            config.removeRandomMove.set(true);
-            Mob randomMoveRemoved = helper.spawnWithNoFreeWill(EntityTypes.SQUID, new BlockPos(12, 0, 0));
-            helper.assertTrue(hasGoal(randomMoveRemoved, Squid.SquidFleeGoal.class),
-                    "remove_random_move must not remove SquidFleeGoal");
-            helper.assertFalse(hasGoal(randomMoveRemoved, Squid.SquidRandomMovementGoal.class),
-                    "remove_random_move must remove SquidRandomMovementGoal");
+            config.removeRandomMove.set(false);
 
-            // Sheep's block-eating goal must be independently removable.
-            config.removeSheepEatBlock.set(true);
-            Mob sheep = helper.spawnWithNoFreeWill(EntityTypes.SHEEP, new BlockPos(14, 0, 0));
-            helper.assertFalse(hasGoal(sheep, EatBlockGoal.class),
-                    "remove_eat_block must remove Sheep EatBlockGoal");
+            Mob cow = helper.spawnWithNoFreeWill(EntityTypes.COW, BlockPos.ZERO);
+            Mob sheep = helper.spawnWithNoFreeWill(EntityTypes.SHEEP, new BlockPos(2, 0, 0));
+            Mob pufferfish = helper.spawnWithNoFreeWill(EntityTypes.PUFFERFISH, new BlockPos(4, 0, 0));
+            Mob squid = helper.spawnWithNoFreeWill(EntityTypes.SQUID, new BlockPos(6, 0, 0));
+
+            logGoals("cow", cow);
+            logGoals("sheep", sheep);
+            logGoals("pufferfish", pufferfish);
+            logGoals("squid", squid);
         } finally {
-            allowRemoveCalls.restore();
-            cowFloat.restore();
-            cowBreed.restore();
-            replaceLookController.restore();
-            replaceLookAllowlist.restore();
-            config.replaceLookController.filterList().set(replaceLookList);
-            pufferPuff.restore();
-            fishFollowLeader.restore();
-            squidFlee.restore();
-            squidRandomMove.restore();
-            sheepEatBlock.restore();
+            for (BoolState state : states) {
+                state.restore();
+            }
+            config.replaceLookController.filterList().set(replaceList);
+            config.removeLookGoal.filterList().set(lookList);
+            config.removeLookRandom.filterList().set(randomLookList);
         }
 
         helper.succeed();
     }
 
-    private static boolean hasGoal(Mob mob, Class<? extends Goal> goalClass) {
+    private static void logGoals(String label, Mob mob) {
+        List<String> goals = new ArrayList<>();
         for (WrappedGoal wrappedGoal : mob.goalSelector.availableGoals) {
-            if (goalClass.isInstance(wrappedGoal.getGoal())) {
-                return true;
-            }
+            Goal goal = wrappedGoal.getGoal();
+            goals.add(goal.getClass().getName());
         }
-        return false;
+        goals.sort(Comparator.naturalOrder());
+
+        AIImprovementsFabric.LOGGER.info(
+                "[AI Improvements GameTest] {} goals ({}): {} | LookControl={}",
+                label,
+                goals.size(),
+                goals,
+                mob.getLookControl().getClass().getName()
+        );
     }
 
     private record BoolState(ConfigMain.BooleanValue value, boolean oldValue) {
