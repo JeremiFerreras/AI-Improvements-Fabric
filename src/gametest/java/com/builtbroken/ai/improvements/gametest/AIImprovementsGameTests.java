@@ -20,6 +20,7 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.RandomSwimmingGoal;
+import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.animal.fish.Pufferfish;
 import net.minecraft.world.entity.animal.squid.Squid;
@@ -198,16 +199,29 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             helper.discard(allowlistedSheep);
 
             // The per-animal config sections must affect their own entity
-            // types, not just the cow section.
+            // types, not just the cow section. Confirm each target goal exists
+            // in the unmodified vanilla mob before enabling its removal.
+            Mob baselineChicken = helper.spawn(EntityTypes.CHICKEN, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(baselineChicken, BreedGoal.class),
+                    "Baseline chicken must have BreedGoal");
+            helper.discard(baselineChicken);
+
             config.chicken.removeBreed().set(true);
             Mob chicken = helper.spawn(EntityTypes.CHICKEN, BlockPos.ZERO);
             helper.assertFalse(hasGoal(chicken, BreedGoal.class),
                     "Chicken remove_breed must remove BreedGoal");
             helper.discard(chicken);
 
+            Mob baselinePig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(baselinePig, TemptGoal.class),
+                    "Baseline pig must have TemptGoal");
+            helper.assertTrue(hasGoal(baselinePig, BreedGoal.class),
+                    "Baseline pig must have BreedGoal");
+            helper.discard(baselinePig);
+
             config.pig.removeTempt().set(true);
             Mob pig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
-            helper.assertFalse(hasGoal(pig, net.minecraft.world.entity.ai.goal.TemptGoal.class),
+            helper.assertFalse(hasGoal(pig, TemptGoal.class),
                     "Pig remove_tempt must remove TemptGoal");
             helper.assertTrue(hasGoal(pig, BreedGoal.class),
                     "Pig remove_tempt must preserve BreedGoal");
@@ -237,6 +251,11 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             // AbstractSchoolingFish hierarchy; verify the dedicated option
             // against a real school-capable species, not a pufferfish.
             config.removeFishPanic.set(false);
+            Mob baselineSchoolFish = helper.spawn(EntityTypes.SALMON, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(baselineSchoolFish, FollowFlockLeaderGoal.class),
+                    "Baseline salmon must have FollowFlockLeaderGoal");
+            helper.discard(baselineSchoolFish);
+
             config.removeFishFollowLeader.set(true);
             Mob schoolFish = helper.spawn(EntityTypes.SALMON, BlockPos.ZERO);
             helper.assertFalse(hasGoal(schoolFish, FollowFlockLeaderGoal.class),
@@ -291,6 +310,10 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             // Sheep's block-eating option must not remove other animal goals.
             config.removeRandomMove.set(false);
+            Mob baselineSheep = helper.spawn(EntityTypes.SHEEP, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(baselineSheep, EatBlockGoal.class),
+                    "Baseline sheep must have EatBlockGoal");
+            helper.discard(baselineSheep);
             config.removeSheepEatBlock.set(true);
 
             Mob sheep = helper.spawn(EntityTypes.SHEEP, BlockPos.ZERO);
