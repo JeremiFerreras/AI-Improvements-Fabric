@@ -44,10 +44,16 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                 BoolState.capture(config.replaceLookController.isAllowlist()),
                 BoolState.capture(config.removeLookGoal.configValue()),
                 BoolState.capture(config.removeLookGoal.isAllowlist()),
+                BoolState.capture(config.removeLookRandom.configValue()),
+                BoolState.capture(config.removeLookRandom.isAllowlist()),
                 BoolState.capture(config.cow.removeFloat()),
                 BoolState.capture(config.cow.removeBreed()),
+                BoolState.capture(config.chicken.removeBreed()),
+                BoolState.capture(config.pig.removeTempt()),
                 BoolState.capture(config.removeSheepEatBlock),
                 BoolState.capture(config.removeFishSwim),
+                BoolState.capture(config.removeFishAvoidPlayer),
+                BoolState.capture(config.removeFishPanic),
                 BoolState.capture(config.removeFishFollowLeader),
                 BoolState.capture(config.removeFishPuff),
                 BoolState.capture(config.removeSquidFlee),
@@ -56,6 +62,7 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
         List<String> replaceLookList = config.replaceLookController.filterList().get();
         List<String> removeLookList = config.removeLookGoal.filterList().get();
+        List<String> removeLookRandomList = config.removeLookRandom.filterList().get();
 
         try {
             // Use known defaults independent of the machine's config file.
@@ -66,12 +73,19 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             config.removeLookGoal.configValue().set(false);
             config.removeLookGoal.isAllowlist().set(false);
             config.removeLookGoal.filterList().set(List.of());
+            config.removeLookRandom.configValue().set(false);
+            config.removeLookRandom.isAllowlist().set(false);
+            config.removeLookRandom.filterList().set(List.of());
 
             config.cow.removeFloat().set(false);
             config.cow.removeBreed().set(false);
+            config.chicken.removeBreed().set(false);
+            config.pig.removeTempt().set(false);
             config.removeSheepEatBlock.set(false);
 
             config.removeFishSwim.set(false);
+            config.removeFishAvoidPlayer.set(false);
+            config.removeFishPanic.set(false);
             config.removeFishFollowLeader.set(false);
             config.removeFishPuff.set(false);
 
@@ -140,6 +154,24 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             config.removeLookGoal.configValue().set(false);
 
+            // The random-look option is independent from looking at players.
+            config.removeLookRandom.configValue().set(true);
+            config.removeLookRandom.isAllowlist().set(true);
+            config.removeLookRandom.filterList().set(List.of("minecraft:sheep"));
+
+            Mob randomLookSheep = helper.spawn(EntityTypes.SHEEP, BlockPos.ZERO);
+            helper.assertFalse(hasGoal(randomLookSheep, RandomLookAroundGoal.class),
+                    "Allowlisted sheep must lose RandomLookAroundGoal");
+            helper.assertTrue(hasGoal(randomLookSheep, LookAtPlayerGoal.class),
+                    "Removing RandomLookAroundGoal must preserve LookAtPlayerGoal");
+            helper.discard(randomLookSheep);
+
+            Mob randomLookCow = helper.spawn(EntityTypes.COW, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(randomLookCow, RandomLookAroundGoal.class),
+                    "Entity outside remove_look_random allowlist must retain the goal");
+            helper.discard(randomLookCow);
+            config.removeLookRandom.configValue().set(false);
+
             // Controller replacement applies to vanilla LookControl, while
             // entity filters decide exactly which mob types are changed.
             config.replaceLookController.configValue().set(true);
@@ -164,8 +196,45 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                     "Sheep in the LookControl allowlist must receive FixedLookControl");
             helper.discard(allowlistedSheep);
 
-            // Pufferfish puff and fish swimming are separate settings.
+            // The per-animal config sections must affect their own entity
+            // types, not just the cow section.
+            config.chicken.removeBreed().set(true);
+            Mob chicken = helper.spawn(EntityTypes.CHICKEN, BlockPos.ZERO);
+            helper.assertFalse(hasGoal(chicken, BreedGoal.class),
+                    "Chicken remove_breed must remove BreedGoal");
+            helper.discard(chicken);
+
+            config.pig.removeTempt().set(true);
+            Mob pig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
+            helper.assertFalse(hasGoal(pig, net.minecraft.world.entity.ai.goal.TemptGoal.class),
+                    "Pig remove_tempt must remove TemptGoal");
+            helper.assertTrue(hasGoal(pig, BreedGoal.class),
+                    "Pig remove_tempt must preserve BreedGoal");
+            helper.discard(pig);
+
+            // Fish options are independent for the shared AbstractFish editor.
             config.replaceLookController.configValue().set(false);
+            config.removeFishAvoidPlayer.set(true);
+            config.removeFishPanic.set(false);
+            Mob avoidRemovedFish = helper.spawn(EntityTypes.PUFFERFISH, BlockPos.ZERO);
+            helper.assertFalse(hasGoal(avoidRemovedFish, net.minecraft.world.entity.ai.goal.AvoidEntityGoal.class),
+                    "remove_avoid_player must remove the fish avoid goal");
+            helper.assertTrue(hasGoal(avoidRemovedFish, PanicGoal.class),
+                    "remove_avoid_player must preserve fish PanicGoal");
+            helper.discard(avoidRemovedFish);
+
+            config.removeFishAvoidPlayer.set(false);
+            config.removeFishPanic.set(true);
+            Mob panicRemovedFish = helper.spawn(EntityTypes.PUFFERFISH, BlockPos.ZERO);
+            helper.assertTrue(hasGoal(panicRemovedFish, net.minecraft.world.entity.ai.goal.AvoidEntityGoal.class),
+                    "remove_panic must preserve the fish avoid goal");
+            helper.assertFalse(hasGoal(panicRemovedFish, PanicGoal.class),
+                    "remove_panic must remove fish PanicGoal");
+            helper.discard(panicRemovedFish);
+
+            config.removeFishPanic.set(false);
+
+            // Pufferfish puff and fish swimming are separate settings.
             config.removeFishPuff.set(true);
             config.removeFishSwim.set(false);
 
@@ -188,6 +257,8 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
 
             // Squid flee and random movement are independent.
             config.removeFishSwim.set(false);
+            config.removeFishAvoidPlayer.set(false);
+            config.removeFishPanic.set(false);
             config.removeSquidFlee.set(true);
             config.removeRandomMove.set(false);
 
@@ -224,6 +295,7 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
             }
             config.replaceLookController.filterList().set(replaceLookList);
             config.removeLookGoal.filterList().set(removeLookList);
+            config.removeLookRandom.filterList().set(removeLookRandomList);
         }
 
         helper.succeed();
