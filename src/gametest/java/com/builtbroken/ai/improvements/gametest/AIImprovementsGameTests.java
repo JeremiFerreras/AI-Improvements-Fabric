@@ -14,6 +14,7 @@ import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.EatBlockGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.FollowFlockLeaderGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
@@ -232,7 +233,16 @@ public final class AIImprovementsGameTests implements CustomTestMethodInvoker {
                     "remove_panic must remove fish PanicGoal");
             helper.discard(panicRemovedFish);
 
+            // Schooling fish use FollowFlockLeaderGoal through the
+            // AbstractSchoolingFish hierarchy; verify the dedicated option
+            // against a real school-capable species, not a pufferfish.
             config.removeFishPanic.set(false);
+            config.removeFishFollowLeader.set(true);
+            Mob schoolFish = helper.spawn(EntityTypes.SALMON, BlockPos.ZERO);
+            helper.assertFalse(hasGoal(schoolFish, FollowFlockLeaderGoal.class),
+                    "remove_follow_leader must remove the schooling fish leader goal");
+            helper.discard(schoolFish);
+            config.removeFishFollowLeader.set(false);
 
             // Pufferfish puff and fish swimming are separate settings.
             config.removeFishPuff.set(true);
